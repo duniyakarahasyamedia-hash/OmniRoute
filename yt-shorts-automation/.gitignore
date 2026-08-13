@@ -1,0 +1,14 @@
+# secrets
+.env
+credentials/
+
+# generated output
+output/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# local junk
+.DS_Store

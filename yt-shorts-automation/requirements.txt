@@ -1,0 +1,21 @@
+# OmniRoute YouTube Shorts Automation — Python dependencies
+# Install with: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# TTS
+edge-tts>=6.1.10        # free Microsoft Edge neural TTS (Hindi voices, word timings)
+gTTS>=2.5.0             # Google Translate TTS fallback (no key needed)
+
+# Media / video
+Pillow>=10.0.0
+imageio-ffmpeg>=0.4.9   # bundles a static ffmpeg with libass (Devanagari captions)
+numpy>=1.26.0
+
+# HTTP / config
+requests>=2.31.0
+PyYAML>=6.0
+python-dotenv>=1.0.0
+
+# YouTube upload
+google-api-python-client>=2.120.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0

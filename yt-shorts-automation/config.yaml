@@ -1,0 +1,136 @@
+# ============================================================
+#  OmniRoute YouTube Shorts Automation — Channel Config
+#  (Duniya Ka Rahasya Media — Hindi Mystery / Facts channel)
+# ============================================================
+
+channel:
+  name: "Duniya Ka Rahasya"
+  language: "hi"            # hi / en
+  handle: "@duniyakarahasya"
+  category_id: "24"         # YouTube category: 24=Entertainment, 22=People & Blogs, 27=Education
+  default_privacy: "private"  # private | unlisted | public  (private = draft review before publish)
+  made_for_kids: false
+
+video:
+  format: "shorts"          # shorts (9:16) | long (16:9)
+  resolution: [1080, 1920]  # width, height
+  fps: 30
+  target_duration: 55       # seconds (Shorts: 15-60s)
+  max_duration: 60
+  music_path: "music/ambient.mp3"  # relative to assets/ — drop your own track here, or leave empty
+  music_volume: 0.12        # background music volume
+  voice_volume: 1.0
+
+# ---------------- AI / LLM (OmniRoute gateway) ----------------
+llm:
+  # OpenAI-compatible endpoint. OmniRoute serves:
+  #   http://localhost:20128/v1/chat/completions
+  # MoneyPrinterTurbo's built-in LLM config also works (see README).
+  base_url: "http://localhost:20128/v1"
+  api_key: ""               # leave empty if OmniRoute is open locally
+  model: "auto"             # e.g. "gpt-4o-mini", "gemini-2.0-flash", or "auto"
+  temperature: 0.8
+  timeout: 60
+  use_ai: true              # false = pure template mode (works with zero keys)
+
+# ---------------- Text-to-Speech ----------------
+tts:
+  backend: "edge"           # edge (free, best Hindi) | gtts | openai | silent
+  voice: "hi-IN-MadhurNeural"   # edge voices: MadhurNeural, SwaraNeural, AaravNeural
+  rate: "+8%"               # edge-tts speed
+  pitch: "+0Hz"
+  openai_voice: "alloy"     # only if backend=openai
+  pause_between_lines: 0.35 # seconds of silence between sentences
+
+# ---------------- Stock footage ----------------
+media:
+  source: "pexels"          # pexels | pixabay | none (none = AI gradients, no key needed)
+  per_line: true            # one background per sentence (false = one bg for whole video)
+  fallback_gradients: true  # if API fails, use generated gradient backgrounds
+  # Hindi word -> English search keyword mapping (used for footage search)
+  keyword_map:
+    "अंतरिक्ष": "space galaxy stars"
+    "अंटार्कटिका": "antarctica ice snow"
+    "समुद्र": "ocean deep sea underwater"
+    "जंगल": "jungle forest dark"
+    "रहस्य": "mystery dark fog"
+    "इतिहास": "ancient history ruins"
+    "मिस्र": "egypt pyramid desert"
+    "पिरामिड": "pyramid desert"
+    "शहर": "city night aerial"
+    "पहाड़": "mountain fog"
+    "ज्वालामुखी": "volcano eruption"
+    "बर्फ": "ice glacier"
+    "द्वीप": "island tropical"
+    "चाँद": "moon night sky"
+    "सूरज": "sun solar flare"
+    "गुफा": "cave dark"
+    "महासागर": "ocean waves"
+    "रेगिस्तान": "desert dunes"
+    "झील": "lake night"
+    "आकाश": "sky clouds sunset"
+
+# ---------------- Video content (topic bank) ----------------
+topics:
+  - "अंटार्कटिका में रेत के टीले क्यों हैं?"
+  - "मिस्र के पिरामिडों का असली रहस्य"
+  - "समुद्र की गहराई में क्या छिपा है?"
+  - "दुनिया का सबसे रहस्यमयी द्वीप"
+  - "अंतरिक्ष में इंसान का खून कैसा दिखता है?"
+  - "जंगल में खोया हुआ शहर जो कभी मिला ही नहीं"
+  - "बर्फ के नीचे छिपी झील का रहस्य"
+  - "क्या चाँद पर पानी है?"
+  - "ज्वालामुखी के अंदर क्या होता है?"
+  - "महासागर का सबसे गहरा बिंदु — मारियाना ट्रेंच"
+
+  # ---- template-mode facts (used when AI is off) ----
+facts:
+  - "अंटार्कटिका में रेत के टीले हैं जो हवा से बनते हैं और उनकी आवाज़ रहस्यमयी होती है।"
+  - "मिस्र के पिरामिडों का निर्माण आज भी एक रहस्य है।"
+  - "समुद्र की गहराई में ऐसे जीव हैं जो प्रकाश बनाते हैं।"
+  - "मारियाना ट्रेंच समुद्र का सबसे गहरा बिंदु है।"
+  - "अंतरिक्ष में इंसान का खून उबलता नहीं बल्कि फैलता है।"
+  - "चाँद पर पानी की बर्फ मौजूद है।"
+  - "दुनिया की सबसे पुरानी गुफाओं में 40,000 साल पुरानी कलाकृतियाँ मिली हैं।"
+  - "ज्वालामुखी के अंदर का तापमान 1000 डिग्री से भी ज्यादा होता है।"
+
+# ---------------- YouTube metadata ----------------
+metadata:
+  title_template: "{hook} | {topic} #shorts"
+  title_max_chars: 95
+  description_template: |
+    {topic}
+
+    {script_lines}
+
+    {hashtags}
+
+    ------------------------------------------------------------------
+    📌 Subscribe: {channel_handle}
+    🔔 Bell icon dabao — har din naya rahasya!
+    ------------------------------------------------------------------
+
+    #shorts #hindishorts #facts #rahasyam #duniyakarahasya #amazingfacts #viralshorts #knowledge #hindifact #youtubeshorts
+  tags:
+    - "hindi facts"
+    - "amazing facts"
+    - "duniya ka rahasya"
+    - "rahasyam"
+    - "mystery hindi"
+    - "rochak tathya"
+    - "hindishorts"
+    - "youtubeshorts"
+    - "knowledge video"
+
+# ---------------- YouTube upload ----------------
+youtube:
+  client_secrets: "credentials/client_secrets.json"
+  token_file: "credentials/token.json"
+  scopes: ["https://www.googleapis.com/auth/youtube.upload"]
+
+# ---------------- Output ----------------
+output:
+  dir: "output"
+  keep_clips: false         # keep intermediate clips (debug)
+  metadata_json: true       # write metadata.json per run
+  run_report: true          # write run_report.json per run

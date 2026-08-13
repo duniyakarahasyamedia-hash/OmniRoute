@@ -1,0 +1,25 @@
+# ============================================================
+#  MPT config overrides — merge these into repos/MoneyPrinterTurbo/config.toml
+# ============================================================
+
+# --- LLM via OmniRoute (free multi-provider gateway) ---
+# Leave llm_provider as "openai" and point base_url at OmniRoute's API:
+llm_provider = "openai"
+openai_api_key = ""                  # empty = local OmniRoute (no key needed)
+openai_base_url = "http://localhost:20128/v1"
+openai_model_name = "auto"
+
+# --- Hindi voiceover (free edge-tts, no key) ---
+# [voice] section: pick a Hindi neural voice
+#   hi-IN-MadhurNeural   (female, warm)
+#   hi-IN-SwaraNeural    (female, expressive)
+#   hi-IN-AaravNeural    (male)
+voice_name = "hi-IN-MadhurNeural"
+
+# --- Stock footage ---
+# video_source = "pexels"  (default) — add your free keys:
+pexels_api_keys = ["YOUR_PEXELS_KEY_HERE"]
+pixabay_api_keys = ["YOUR_PIXABAY_KEY_HERE"]
+
+# --- Portrait Shorts output ---
+video_aspect = "竖屏 9:16（抖音/SHORTS）"
