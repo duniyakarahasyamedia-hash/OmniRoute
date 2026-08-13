@@ -11,6 +11,23 @@
 
 </div>
 
+<br/>
+
+## 🗂️ Combined Monorepo
+
+This repository is a **combined monorepo** — every `duniyakarahasyamedia-hash` repository
+is included **in one place, with full git history preserved**.
+
+| Project | Location |
+| --- | --- |
+| **OmniRoute** (this project) | repo root |
+| agent-skills · Vijay · TradingAgents · Wan2.1 · crawl4ai · nango · hyperframes · n8n · OpenHands · MoneyPrinterTurbo | [`repos/`](repos/) |
+
+👉 See **[`repos/README.md`](repos/README.md)** for the full map, source commits, and how to
+update or extract any sub-repository.
+
+<br/>
+
 <div align="center">
 
 ## 💰 ~1.53B Free Tokens / Month

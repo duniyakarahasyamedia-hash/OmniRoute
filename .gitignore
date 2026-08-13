@@ -253,3 +253,27 @@ tests/homolog/ui/.auth/
 homolog-report/
 docker-compose.yml.bak
 .playwright-cli/
+
+# ============================================================
+# Combined monorepo — safety net for imported repos (repos/*)
+# Prevents accidental commits of huge dependency/build artifacts
+# that may not be covered by each imported project's own .gitignore.
+# ============================================================
+repos/**/node_modules/
+repos/**/.venv/
+repos/**/venv/
+repos/**/__pycache__/
+repos/**/*.py[cod]
+repos/**/dist/
+repos/**/build/
+repos/**/.next/
+repos/**/.cache/
+repos/**/.mypy_cache/
+repos/**/.pytest_cache/
+repos/**/.ruff_cache/
+repos/**/.tox/
+repos/**/coverage/
+repos/**/*.egg-info/
+repos/**/.DS_Store
+repos/**/target/
+repos/**/out/
