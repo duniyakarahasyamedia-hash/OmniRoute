@@ -1,19 +1,21 @@
-# Saathi — personal AI agent
+# Saathi Studio — YouTube Automation Master Agent
 
-Hinglish-first personal agent with local tools, memory, tasks, voice, and optional cloud models.
+End-to-end YouTube production desk. One operator, one pipeline.
 
 ```bash
 cd saathi
 node server.js
 ```
 
-Open the printed URL. Local skills work with zero keys:
+## Pipeline
 
-- clock / date
-- calculator
-- memory (`yaad rakh …`)
-- tasks (`task add kar …`)
-- jokes + shayari
-- voice input / spoken replies
+1. Channel setup
+2. Market research
+3. Topic lab (10 scored ideas)
+4. Deep research
+5. Script room
+6. Packaging (titles, thumbnail, SEO)
+7. Production kit
+8. Upload pack
 
-Add a Groq, OpenAI, or OpenRouter key in Settings for open-ended answers. Provider `auto` also tries Pollinations from the browser.
+Local engine works with zero API keys. Optional Groq / OpenAI / OpenRouter key upgrades free-form rewrites.

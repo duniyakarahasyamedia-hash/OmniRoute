@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Saathi — tumhara AI agent</title>
-    <meta name="description" content="Saathi is your personal Hinglish AI agent with memory, tasks, tools, and optional cloud models." />
+    <title>Saathi Studio — YouTube Automation Master</title>
+    <meta name="description" content="End-to-end YouTube production agent: research, topics, scripts, packaging, upload packs." />
     <link rel="icon" href="./avatar.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,17 +13,22 @@
   </head>
   <body>
     <div class="app">
-      <aside class="panel sidebar">
+      <aside class="panel nav">
         <div class="brand">
-          <img src="./avatar.png" alt="Saathi" />
+          <img src="./avatar.png" alt="Saathi Studio" />
           <div>
-            <h1>Saathi</h1>
-            <p>Personal AI agent</p>
+            <h1>Saathi Studio</h1>
+            <p>YouTube Master Agent</p>
           </div>
         </div>
-        <button id="newChat" class="chip active">+ Nayi chat</button>
-        <div class="section-title">Chats</div>
-        <div id="sessions" class="session-list"></div>
+        <div class="row">
+          <button id="newVideo" class="btn-red">+ New video</button>
+          <button id="autoPilot">Decide for me</button>
+        </div>
+        <div class="section-title">Pipeline</div>
+        <div id="steps"></div>
+        <div class="section-title">Projects</div>
+        <div id="projects"></div>
       </aside>
 
       <main class="panel stage">
@@ -31,68 +36,50 @@
           <div class="identity">
             <img src="./avatar.png" alt="" />
             <div>
-              <strong id="agentName">Saathi</strong>
-              <div id="status" class="status"><i></i>Online · ready</div>
+              <strong>YouTube Automation Master</strong>
+              <div id="status" class="status"><i></i>Ready to produce</div>
             </div>
           </div>
-          <div class="chip-row">
-            <span class="chip">Hinglish</span>
-            <span class="chip">Memory</span>
-            <span class="chip">Tools</span>
+          <div class="row">
+            <button id="exportMd">Export pack</button>
+            <button id="copyPack">Copy</button>
           </div>
         </header>
-
-        <section id="hero" class="hero">
-          <img src="./avatar.png" alt="Saathi avatar" />
-          <h2>Bolo, kya kaam hai?</h2>
-          <p>
-            Main tumhara personal agent hoon. Time, hisaab, yaadein, tasks, jokes — sab yahin.
-            Deep answers ke liye Settings mein free Groq / OpenRouter key laga dena.
-          </p>
-          <div id="quick" class="quick-row"></div>
-        </section>
-
-        <div id="messages" class="messages"></div>
-
+        <div id="workspace" class="workspace"></div>
         <form id="composer" class="composer">
           <div class="box">
-            <button type="button" id="mic" class="icon-btn" title="Voice">🎙</button>
-            <textarea id="input" rows="1" placeholder="Hinglish mein likho… Enter to send"></textarea>
-            <button class="send" type="submit">Bhejo</button>
+            <textarea id="input" rows="1" placeholder="Direct the agent… e.g. “personal finance India, decide everything” or “write the script”"></textarea>
+            <button class="send" type="submit">Run</button>
           </div>
-          <div class="hint">Local tools hamesha on hain. Cloud model optional hai.</div>
+          <div class="hint">Local production engine is always on. Optional API key in the right rail upgrades open-ended rewrites.</div>
         </form>
       </main>
 
       <aside class="panel rail">
-        <div class="section-title">Memory</div>
-        <div id="facts" class="memory-list"></div>
-        <div class="section-title">Tasks</div>
-        <div id="tasks" class="task-list"></div>
-        <div class="section-title">Settings</div>
-        <div class="settings">
-          <label>Agent ka naam</label>
-          <input id="settingsName" placeholder="Saathi" />
-          <label>Tumhara naam</label>
-          <input id="settingsUser" placeholder="Aarav" />
-          <label>Model provider</label>
+        <div class="section-title">Channel</div>
+        <div id="channelCard" class="card"></div>
+        <div class="section-title">Selected video</div>
+        <div id="videoCard" class="card"></div>
+        <div class="section-title">Model (optional)</div>
+        <div class="card">
+          <label>Provider</label>
           <select id="settingsProvider">
-            <option value="auto">Auto (free + key)</option>
+            <option value="auto">Auto</option>
             <option value="pollinations">Pollinations free</option>
             <option value="groq">Groq</option>
             <option value="openai">OpenAI</option>
             <option value="openrouter">OpenRouter</option>
-            <option value="custom">Custom OpenAI-compatible</option>
           </select>
-          <label>API key (optional)</label>
-          <input id="settingsKey" type="password" placeholder="gsk_… / sk-…" />
-          <label>Model id</label>
+          <label>API key</label>
+          <input id="settingsKey" type="password" placeholder="optional" />
+          <label>Model</label>
           <input id="settingsModel" placeholder="openai / llama-3.1-8b-instant" />
-          <label><input id="settingsVoice" type="checkbox" /> Voice replies</label>
-          <button id="saveSettings" class="send" type="button">Save</button>
+          <div style="height:8px"></div>
+          <button id="saveSettings" class="btn-red" type="button">Save model</button>
         </div>
       </aside>
     </div>
+    <script src="./engine.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

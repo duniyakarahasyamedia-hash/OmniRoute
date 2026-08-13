@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DATA_DIR = path.join(__dirname, "data");
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
+const STUDIO_FILE = path.join(DATA_DIR, "studio.json");
 const HOST = "0.0.0.0";
 const PORT = Number(process.env.PORT || 8787);
 
@@ -38,6 +39,12 @@ function ensureData() {
         null,
         2,
       ),
+    );
+  }
+  if (!fs.existsSync(STUDIO_FILE)) {
+    fs.writeFileSync(
+      STUDIO_FILE,
+      JSON.stringify({ channel: null, projects: [], updatedAt: new Date().toISOString() }, null, 2),
     );
   }
 }
@@ -98,7 +105,7 @@ function serveStatic(req, res) {
     const ext = path.extname(abs).toLowerCase();
     res.writeHead(200, {
       "Content-Type": MIME[ext] || "application/octet-stream",
-      "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=3600",
+      "Cache-Control": [".html", ".js", ".css"].includes(ext) ? "no-store" : "public, max-age=3600",
     });
     res.end(buf);
   });
@@ -107,9 +114,33 @@ function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
 
-  if (req.method === "GET" && url.pathname === "/api/health") {
-    send(res, 200, { ok: true, agent: "saathi", time: new Date().toISOString() });
+    if (req.method === "GET" && url.pathname === "/api/health") {
+    send(res, 200, { ok: true, agent: "saathi-studio", role: "youtube-master", time: new Date().toISOString() });
     return;
+  }
+
+  if (url.pathname === "/api/studio") {
+    try {
+      ensureData();
+      if (req.method === "GET") {
+        send(res, 200, JSON.parse(fs.readFileSync(STUDIO_FILE, "utf8")));
+        return;
+      }
+      if (req.method === "POST") {
+        const body = await readBody(req);
+        const payload = {
+          channel: body.channel || null,
+          projects: Array.isArray(body.projects) ? body.projects : [],
+          updatedAt: new Date().toISOString(),
+        };
+        fs.writeFileSync(STUDIO_FILE, JSON.stringify(payload, null, 2));
+        send(res, 200, payload);
+        return;
+      }
+    } catch {
+      send(res, 400, { error: "bad request" });
+      return;
+    }
   }
 
   if (url.pathname === "/api/memory") {
