@@ -1,0 +1,25 @@
+# ai-film-studio configuration example.
+# Copy this file to config.toml (same folder) and fill in your values.
+# config.toml is gitignored — never commit API keys.
+
+# Gemini API key (script + shot-list, and Veo video generation).
+# Get it at: https://aistudio.google.com/app/apikey
+# NOTE: Veo 3.1 via API needs PAID Cloud billing on this key.
+gemini_api_key = ""
+
+# Model used for story/script/shot-list. Flash models are free-tier.
+gemini_model = "gemini-2.5-flash"
+
+# Veo video model. Fast = cheaper/faster drafts; default = quality.
+veo_model = "veo-3.1-generate-preview"
+# veo_model = "veo-3.1-fast-generate-preview"
+
+# Output video shape: "9:16" (Shorts/Reels) or "16:9" (YouTube).
+aspect_ratio = "9:16"
+
+# Seconds per scene (Veo supports 4, 8 and up to ~10s depending on model).
+duration_seconds = 8
+
+# Hindi voiceover voice (edge-tts). Free, no key needed.
+# Female: hi-IN-SwaraNeural   Male: hi-IN-MadhurNeural
+voice = "hi-IN-SwaraNeural"

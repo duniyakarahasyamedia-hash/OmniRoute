@@ -1,0 +1,11 @@
+# Secrets — never commit these
+config.toml
+client_secrets.json
+token.json
+
+# Generated output
+storage/
+
+# Python
+__pycache__/
+*.pyc
