@@ -41,6 +41,48 @@ Aapke paas **Google AI Studio Pro** hai. Important baat:
 
 ---
 
+## ⚡ One-command + Batch + Auto-scheduler (full automation)
+
+Sab kuch ek command se — `run_film.py` orchestrator:
+
+```bash
+cd ai-film-studio
+
+# 1 film, cinematic (Veo)
+python3 run_film.py --idea "एक अकेला लड़का रेगिस्तान में एक पुराना दरवाज़ा खोजता है"
+
+# faceless (₹0) + YouTube par private upload
+python3 run_film.py --idea "भारत के 5 रहस्यमयी स्थान" --engine mpt --upload
+
+# Wan2.1 (apna GPU)
+python3 run_film.py --idea "..." --engine wan21 --ckpt-dir ../repos/Wan2.1/Wan2.1-T2V-1.3B
+
+# BATCH: ideas.txt se back-to-back N videos (ek line = ek video)
+python3 run_film.py --batch ideas.txt --engine mpt --upload
+```
+
+**Auto-scheduler** (roz 1 video khud banao + upload karo):
+
+```bash
+# 1) ideas daalo (queue.example.txt ko copy karo):
+cp queue.example.txt queue.txt
+
+# 2) cron se daily 7 AM:
+crontab -e
+0 7 * * * cd /home/user/OmniRoute/ai-film-studio && \
+          /usr/bin/python3 scheduler.py --engine mpt --upload >> logs/scheduler.log 2>&1
+
+# ya daemon ki tarah chalao (har 24h ek video):
+python3 scheduler.py --engine mpt --upload --loop
+```
+
+- `queue.txt` → pending ideas; `done.txt` → processed ideas (re-run ke liye clear karo)
+- har run ka full log `logs/runs.log` mein milta hai
+
+> **`--engine` options:** `veo` (cinematic, paid API) · `mpt` (faceless, ₹0) · `wan21` (open-source GPU)
+
+---
+
 ## 1. Setup (ek baar)
 
 ```bash
@@ -202,6 +244,9 @@ python3 scripts/upload_youtube.py storage/film-xxxxxxxx/final.mp4 \
 ```
 ai-film-studio/
 ├── config.example.toml                 # apni keys ka template (config.toml = gitignored)
+├── run_film.py                         # ONE-COMMAND orchestrator (single/batch/upload)
+├── scheduler.py                        # daily auto-runner (cron/daemon)
+├── queue.example.txt                   # ideas list ka template (queue.txt = gitignored)
 ├── templates/moneyprinterturbo.config.toml   # MPT config (Gemini + Hindi font) ready-made
 └── scripts/
     ├── veo_film_pipeline.py            # story -> shot-list -> Veo clips -> final.mp4

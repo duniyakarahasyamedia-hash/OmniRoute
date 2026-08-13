@@ -3,8 +3,11 @@ config.toml
 client_secrets.json
 token.json
 
-# Generated output
+# Generated output + runtime state
 storage/
+logs/
+queue.txt
+done.txt
 
 # Python
 __pycache__/
