@@ -443,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--veo-model", default=DEFAULT_VEO_MODEL)
     p.add_argument("--api-key", default="", help="Gemini API key (or env GEMINI_API_KEY)")
     p.add_argument("--skip-video", action="store_true", help="shot-list only, no Veo calls")
+    p.add_argument("--regenerate", action="store_true", help="force new story.json instead of reusing")
     p.add_argument("--no-narration", action="store_true", help="skip Hindi voiceover")
     p.add_argument("--no-assemble", action="store_true", help="skip final ffmpeg assembly")
     p.add_argument("--mpt-dir", default=str(ROOT.parent / "repos" / "MoneyPrinterTurbo"))
@@ -470,21 +471,35 @@ def main(argv: list[str] | None = None) -> int:
         ROOT / "storage" / f"film-{uuid.uuid4().hex[:8]}"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[1/4] Building shot-list ({args.num_scenes} scenes) via {args.gemini_model} ...")
-    shotlist = build_shotlist(idea, args.style, args.num_scenes, args.gemini_model, client)
-    (out_dir / "story.json").write_text(
-        json.dumps(shotlist, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+
+    # ---- story: reuse existing story.json so re-runs keep the same narration ----
+    story_path = out_dir / "story.json"
+    if story_path.exists() and not args.regenerate:
+        shotlist = json.loads(story_path.read_text(encoding="utf-8"))
+        print(f"[1/4] Reusing existing story.json ({len(shotlist.get('scenes', []))} scenes)")
+    else:
+        print(f"[1/4] Building shot-list ({args.num_scenes} scenes) via {args.gemini_model} ...")
+        shotlist = build_shotlist(idea, args.style, args.num_scenes, args.gemini_model, client)
+        story_path.write_text(
+            json.dumps(shotlist, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     print(f"      title: {shotlist.get('title')!r}")
 
     scenes = shotlist["scenes"]
+    shots_dir = out_dir / "shots"
 
+    # ---- clips: reuse any scene_*.mp4 already in shots/ (e.g. made in Gemini app) ----
+    existing_clips = sorted(shots_dir.glob("scene_*.mp4"))
     clip_paths: list[Path] = []
-    if args.skip_video:
-        print("[2/4] --skip-video: no clips generated.")
+    if existing_clips:
+        clip_paths = existing_clips
+        print(f"[2/4] Found {len(existing_clips)} clips in {shots_dir} — using them.")
+        for c in clip_paths:
+            print(f"      {c.name}")
+    elif args.skip_video:
+        print("[2/4] --skip-video: no clips. (Put Veo clips in shots/ then re-run to assemble.)")
     else:
         print(f"[2/4] Generating {len(scenes)} clips via {args.veo_model} ...")
-        shots_dir = out_dir / "shots"
         for sc in scenes:
             out = shots_dir / f"scene_{sc['scene']:02d}.mp4"
             if out.exists():
@@ -499,11 +514,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_narration:
         print("[3/4] --no-narration: skipping Hindi voiceover.")
     else:
-        print(f"[3/4] Hindi narration via edge-tts ({args.voice}) ...")
-        audio_paths = build_narration(scenes, args.voice, out_dir / "audio")
-        voiceover = _concat_audio(audio_paths, out_dir / "audio" / "voiceover.m4a")
-        build_srt(scenes, audio_paths, out_dir / "subtitles.srt")
-        print(f"      voiceover: {voiceover}")
+        audio_dir = out_dir / "audio"
+        existing_voiceover = audio_dir / "voiceover.m4a"
+        if existing_voiceover.exists() and not args.regenerate:
+            audio_paths = sorted(audio_dir.glob("scene_*.mp3"))
+            print(f"[3/4] Reusing existing voiceover ({len(audio_paths)} files).")
+        else:
+            print(f"[3/4] Hindi narration via edge-tts ({args.voice}) ...")
+            audio_paths = build_narration(scenes, args.voice, audio_dir)
+            voiceover = _concat_audio(audio_paths, audio_dir / "voiceover.m4a")
+            build_srt(scenes, audio_paths, out_dir / "subtitles.srt")
+            print(f"      voiceover: {voiceover}")
 
     if args.no_assemble or not clip_paths or not audio_paths:
         print("[4/4] --no-assemble (or missing clips/audio): skipping final assembly.")
