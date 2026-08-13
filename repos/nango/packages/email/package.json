@@ -1,0 +1,26 @@
+{
+    "name": "@nangohq/email",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "dist/index.js",
+    "private": true,
+    "keywords": [],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/NangoHQ/nango.git",
+        "directory": "packages/email"
+    },
+    "dependencies": {
+        "@nangohq/utils": "file:../utils",
+        "dd-trace": "5.117.0",
+        "form-data": "4.0.6",
+        "mailgun.js": "13.2.0",
+        "nodemailer": "9.0.1",
+        "ws": "8.21.0"
+    },
+    "devDependencies": {
+        "@nangohq/types": "file:../types",
+        "@types/ws": "8.18.1",
+        "vitest": "4.1.9"
+    }
+}

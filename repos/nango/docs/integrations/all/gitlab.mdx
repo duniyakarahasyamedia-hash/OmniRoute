@@ -1,0 +1,46 @@
+---
+title: Gitlab
+sidebarTitle: Gitlab
+---
+
+import Overview from "/snippets/overview.mdx"
+import PreBuiltTooling from "/snippets/generated/gitlab/PreBuiltTooling.mdx"
+import PreBuiltUseCases from "/snippets/generated/gitlab/PreBuiltUseCases.mdx"
+
+<Overview />
+<PreBuiltTooling />
+<PreBuiltUseCases />
+
+## Access requirements
+| Pre-Requisites | Status | Comment|
+| - | - | - |
+| Paid dev account | ❓ |  |
+| Paid test account | ❓ |  |
+| Partnership | ❓ | |
+| App review | ❓ |  |
+| Security audit | ❓ | |
+
+
+## Setup guide
+
+_No setup guide yet._
+
+<Tip>Need help getting started? Get help in the [community](https://nango.dev/slack).</Tip>
+
+<Note>Contribute improvements to the setup guide by [editing this page](https://github.com/nangohq/nango/tree/master/docs/integrations/all/gitlab.mdx)</Note>
+
+
+## Useful links
+
+-   [How to register an Application](https://docs.gitlab.com/ee/integration/oauth_provider.html)
+-   [OAuth-related docs](https://docs.gitlab.com/ee/api/oauth2.html#authorization-code-flow)
+-   [List of OAuth scopes](https://docs.gitlab.com/ee/integration/oauth_provider.html)
+-   [API](https://docs.gitlab.com/ee/api/rest/)
+
+<Note>Contribute useful links by [editing this page](https://github.com/nangohq/nango/tree/master/docs/integrations/all/gitlab.mdx)</Note>
+
+## API gotchas
+
+-   GitLab webhook payloads do not contain a Nango connection ID, and a single connection can span many GitLab projects. To route a project or group webhook to a specific connection, append `?nangoConnectionId=<connectionId>` to the Nango webhook URL when registering the hook in GitLab. Nango reads the [`X-Gitlab-Event`](https://docs.gitlab.com/user/project/integrations/webhook_events/) header (for example, `Issue Hook`, `Merge Request Hook`, or `Note Hook`) as the event type. Configure a [signing token](https://docs.gitlab.com/user/project/integrations/webhooks/#signing-tokens) on the GitLab hook and store the same value as `webhookSecret` in the Nango connection's metadata. For GitLab versions before 19.0, configure a secret token and store it in the same metadata field; Nango falls back to validating `X-Gitlab-Token` when no signature is present.
+
+<Note>Contribute API gotchas by [editing this page](https://github.com/nangohq/nango/tree/master/docs/integrations/all/gitlab.mdx)</Note>

@@ -1,0 +1,154 @@
+import type { ApiEndpoint } from '../api.js';
+import type { ConnectUISettings } from '../connectUISettings/dto.js';
+import type { ApiEndUser } from '../endUser/index.js';
+
+export interface ConnectSessionInput {
+    allowed_integrations?: string[] | undefined;
+    integrations_config_defaults?:
+        | Record<
+              string,
+              {
+                  user_scopes?: string | undefined;
+                  authorization_params?: Record<string, string> | undefined;
+                  connection_config?:
+                      | {
+                            [key: string]: unknown;
+                            oauth_scopes_override?: string | undefined;
+                        }
+                      | undefined;
+              }
+          >
+        | undefined;
+    end_user: EndUserInput;
+    organization?:
+        | {
+              id: string;
+              display_name?: string | undefined;
+          }
+        | undefined;
+    tags?: Record<string, string> | undefined;
+    overrides?: Record<string, { docs_connect?: string | undefined }> | undefined;
+    /** Session-level override of the environment's webhook URLs, applied to the connection created by this session. */
+    webhook_url_override?: string | undefined;
+}
+
+export interface EndUserInput {
+    id: string;
+    email?: string | undefined;
+    display_name?: string | undefined;
+    tags?: Record<string, string> | undefined;
+}
+
+export type ConnectSessionOutput = Omit<ConnectSessionInput, 'end_user' | 'organization'> & {
+    endUser: ApiEndUser | null;
+    isReconnecting?: boolean;
+    connectUISettings: ConnectUISettings;
+    /**
+     * Server-side WebSocket upgrade path (NANGO_SERVER_WEBSOCKETS_PATH), sent on self-hosted
+     * deployments so Connect UI opens its OAuth-result socket on the matching path.
+     */
+    websocketsPath?: string;
+};
+
+export type PostConnectSessionsBody =
+    | ConnectSessionInput
+    | (Omit<ConnectSessionInput, 'end_user' | 'tags'> & {
+          /**
+           * When top-level tags is provided, end_user becomes optional.
+           */
+          tags: NonNullable<ConnectSessionInput['tags']>;
+          end_user?: ConnectSessionInput['end_user'] | undefined;
+      });
+
+export type PostConnectSessions = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'POST';
+    Path: '/connect/sessions';
+    Body: PostConnectSessionsBody;
+    Success: {
+        data: {
+            token: string;
+            connect_link: string;
+            expires_at: string;
+        };
+    };
+}>;
+
+export type PostPublicConnectSessionsReconnect = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'POST';
+    Path: '/connect/sessions/reconnect';
+    Body: {
+        connection_id: string;
+        integration_id: string;
+        integrations_config_defaults?: ConnectSessionInput['integrations_config_defaults'];
+        end_user?: ConnectSessionInput['end_user'] | undefined;
+        organization?: ConnectSessionInput['organization'];
+        overrides?: ConnectSessionInput['overrides'];
+        webhook_url_override?: ConnectSessionInput['webhook_url_override'];
+        tags?: ConnectSessionInput['tags'];
+    };
+    Success: {
+        data: {
+            token: string;
+            connect_link: string;
+            expires_at: string;
+        };
+    };
+}>;
+
+export type GetConnectSession = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'GET';
+    Path: '/connect/session';
+    Success: {
+        data: ConnectSessionOutput;
+    };
+}>;
+
+export type DeleteConnectSession = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'DELETE';
+    Path: '/connect/session';
+    Success: never;
+}>;
+
+export type PostInternalConnectSessions = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'POST';
+    Path: '/api/v1/connect/sessions';
+    Success: PostConnectSessions['Success'];
+    Body: Pick<
+        ConnectSessionInput,
+        'allowed_integrations' | 'end_user' | 'organization' | 'integrations_config_defaults' | 'overrides' | 'webhook_url_override'
+    >;
+}>;
+
+export type PostPublicConnectTelemetry = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'POST';
+    Path: '/connect/telemetry';
+    Body: {
+        token: string;
+        event:
+            | 'open'
+            | 'view:list'
+            | 'view:integration'
+            | 'view:unknown_error'
+            | 'view:credentials_error'
+            | 'view:success'
+            | 'click:integration'
+            | 'click:doc'
+            | 'click:doc_section'
+            | 'click:connect'
+            | 'click:close'
+            | 'click:finish'
+            | 'click:outside'
+            | 'popup:blocked_by_browser'
+            | 'popup:closed_early';
+        timestamp: Date;
+        dimensions?: { integration?: string | undefined } | undefined;
+    };
+    // We use sendBeacon, it expects no response
+    Success: never;
+}>;

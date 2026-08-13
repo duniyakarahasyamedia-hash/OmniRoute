@@ -1,0 +1,1164 @@
+import { Prism } from '@mantine/prism';
+import { HelpCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSearchParam } from 'react-use';
+import { useSWRConfig } from 'swr';
+
+import Nango, { AuthError } from '@nangohq/frontend';
+
+import { SecretInput } from '@/components/patterns/SecretInput';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
+import { ScopesInput } from '../../components/patterns/ScopesInput';
+import { useEnvironment } from '../../hooks/useEnvironment';
+import { useListIntegrations } from '../../hooks/useIntegration';
+import { useToast } from '../../hooks/useToast';
+import DashboardLayout from '../../layout/DashboardLayout';
+import { useStore } from '../../store';
+import { track } from '../../utils/analytics';
+import { useGetHmacAPI } from '../../utils/api';
+import { isCloudProd } from '../../utils/cloud.js';
+import { globalEnv } from '../../utils/env';
+
+import type { ApiIntegrationList, AuthModeType } from '@nangohq/types';
+
+export const ConnectionCreateLegacy: React.FC = () => {
+    const { mutate } = useSWRConfig();
+    const env = useStore((state) => state.env);
+
+    const { data: integrationsData } = useListIntegrations(env);
+    const integrations = integrationsData?.data;
+
+    const [loaded, setLoaded] = useState(false);
+    const [serverErrorMessage, setServerErrorMessage] = useState('');
+    const navigate = useNavigate();
+    const [integration, setIntegration] = useState<ApiIntegrationList | null>(null);
+    const [connectionId, setConnectionId] = useState<string>('test-connection-id');
+    const [authMode, setAuthMode] = useState<AuthModeType>('OAUTH2');
+    const [connectionConfigParams, setConnectionConfigParams] = useState<Record<string, string> | null>(null);
+    const [authorizationParams, setAuthorizationParams] = useState<Record<string, string> | null>(null);
+    const [authorizationParamsError, setAuthorizationParamsError] = useState<boolean>(false);
+    const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+    const [oauthSelectedScopes, setOauthSelectedScopes] = useState<string[]>([]);
+    const [oauthccSelectedScopes, setOauthccSelectedScopes] = useState<string[]>([]);
+    const [publicKey, setPublicKey] = useState('');
+    const [hostUrl, setHostUrl] = useState('');
+    const [websocketsPath, setWebsocketsPath] = useState<string>('');
+    const [isHmacEnabled, setIsHmacEnabled] = useState(false);
+    const [hmacDigest, setHmacDigest] = useState('');
+    const [apiKey, setApiKey] = useState('');
+    const [apiAuthUsername, setApiAuthUsername] = useState('');
+    const [apiAuthPassword, setApiAuthPassword] = useState('');
+    const [oAuthClientId, setOAuthClientId] = useState('');
+    const [tokenId, setTokenId] = useState('');
+    const [tokenSecret, setTokenSecret] = useState('');
+    const [organizationId, setOrganizationId] = useState('');
+    const [devKey, setDevKey] = useState('');
+    const [oAuthClientSecret, setOAuthClientSecret] = useState('');
+    const [clientCertificate, setClientCertificate] = useState('');
+    const [clientPrivateKey, setClientPrivateKey] = useState('');
+    const [credentialsState, setCredentialsState] = useState<Record<string, string>>({});
+    const [assertionOptionState, setAssertionOptionState] = useState<Record<string, string>>({});
+    const getHmacAPI = useGetHmacAPI(env);
+    const { toast } = useToast();
+    const providerConfigKey = useSearchParam('providerConfigKey');
+    const { data } = useEnvironment(env);
+    const environmentAndAccount = data?.environmentAndAccount;
+
+    useEffect(() => {
+        setLoaded(false);
+    }, [env]);
+
+    useEffect(() => {
+        const getHmac = async () => {
+            const res = await getHmacAPI(integration!.unique_key, connectionId);
+
+            if (res?.status === 200) {
+                const hmacDigest = (await res.json())['hmac_digest'];
+                setHmacDigest(hmacDigest);
+            }
+        };
+        if (isHmacEnabled && integration?.unique_key && connectionId) {
+            void getHmac();
+        }
+    }, [isHmacEnabled, integration?.unique_key, connectionId]);
+
+    useEffect(() => {
+        if (environmentAndAccount) {
+            const { environment } = environmentAndAccount;
+            setPublicKey(environment.public_key);
+            setHostUrl(globalEnv.apiUrl);
+            setWebsocketsPath(environment.websockets_path || '');
+            setIsHmacEnabled(Boolean(environment.hmac_key));
+        }
+
+        if (!loaded) {
+            setLoaded(true);
+        }
+    }, [loaded, setLoaded, setIntegration, environmentAndAccount, setPublicKey, providerConfigKey]);
+
+    useEffect(() => {
+        if (integrations && integrations.length > 0) {
+            const defaultIntegration = providerConfigKey ? integrations.find((i) => i.unique_key === providerConfigKey) : integrations[0];
+
+            setIntegration(defaultIntegration!);
+            setUpConnectionConfigParams(defaultIntegration!);
+            setAuthMode(defaultIntegration!.meta.authMode);
+        }
+    }, [integrations]);
+
+    const handleCreate = (e: React.SyntheticEvent) => {
+        e.preventDefault();
+        setServerErrorMessage('');
+
+        const target = e.target as typeof e.target & {
+            integration_unique_key: { value: string };
+            connection_id: { value: string };
+            connection_config_params: { value: string };
+            user_scopes: { value: string };
+            authorization_params: { value: string | undefined };
+        };
+
+        const nango = new Nango({ host: hostUrl, websocketsPath, publicKey });
+
+        let credentials: Record<string, any> = {};
+        let params = connectionConfigParams || {};
+
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        Object.keys(params).forEach((key) => params[key] === '' && delete params[key]);
+
+        if (authMode === 'BASIC' || authMode === 'SIGNATURE') {
+            credentials = {
+                username: apiAuthUsername,
+                password: apiAuthPassword
+            };
+
+            if (authMode === 'SIGNATURE') {
+                credentials = {
+                    ...credentials,
+                    type: 'SIGNATURE'
+                };
+            }
+        }
+
+        if (authMode === 'API_KEY') {
+            credentials = {
+                apiKey
+            };
+        }
+
+        if (authMode === 'OAUTH2') {
+            credentials = {
+                oauth_client_id_override: oAuthClientId,
+                oauth_client_secret_override: oAuthClientSecret
+            };
+
+            if (oauthSelectedScopes.length > 0) {
+                params = {
+                    ...params,
+                    oauth_scopes_override: oauthSelectedScopes.join(',')
+                };
+            }
+        }
+
+        if (authMode === 'OAUTH2_CC') {
+            credentials = {
+                client_id: oAuthClientId,
+                client_secret: oAuthClientSecret
+            };
+
+            if (clientCertificate && clientPrivateKey) {
+                credentials.client_certificate = clientCertificate;
+                credentials.client_private_key = clientPrivateKey;
+            }
+
+            if (oauthccSelectedScopes.length > 0) {
+                params = {
+                    ...params,
+                    oauth_scopes: oauthccSelectedScopes.join(',')
+                };
+            }
+        }
+
+        if (authMode === 'TBA') {
+            credentials = {
+                oauth_client_id_override: oAuthClientId,
+                oauth_client_secret_override: oAuthClientSecret,
+                token_id: tokenId,
+                token_secret: tokenSecret
+            };
+            if (oauthSelectedScopes.length > 0) {
+                params = {
+                    ...params,
+                    oauth_scopes_override: oauthSelectedScopes.join(',')
+                };
+            }
+        }
+
+        if (authMode === 'JWT') {
+            if (integration?.provider.includes('ghost-admin')) {
+                const privateKeyFormat = /^([^:]+):([^:]+)$/;
+                if (!privateKeyFormat.test(credentialsState.privateKey)) {
+                    toast({ variant: 'error', title: 'The API key should be in the format id:secret.' });
+                    return;
+                }
+                const [id, secret] = credentialsState.privateKey.split(':');
+                credentials = {
+                    privateKey: { id, secret }
+                };
+            } else {
+                credentials = {
+                    type: 'JWT',
+                    ...credentialsState
+                };
+            }
+        }
+
+        if (authMode === 'BILL') {
+            credentials = {
+                username: apiAuthUsername,
+                password: apiAuthPassword,
+                organization_id: organizationId,
+                dev_key: devKey
+            };
+        }
+        if (authMode === 'TWO_STEP') {
+            credentials = {
+                type: 'TWO_STEP',
+                ...credentialsState
+            };
+        }
+        const shouldIncludeUserScope = authMode !== 'NONE' && !integration?.meta.installation;
+        const connectionConfig = {
+            ...(shouldIncludeUserScope && { user_scope: selectedScopes || [] }),
+            params,
+            authorization_params: authorizationParams || {},
+            hmac: hmacDigest || '',
+            credentials,
+            ...(integration?.meta.installation && { installation: integration?.meta.installation }),
+            ...(authMode === 'TWO_STEP' && Object.keys(assertionOptionState).length > 0 && { assertionOption: assertionOptionState })
+        };
+        const getConnection =
+            authMode === 'NONE'
+                ? nango.create(target.integration_unique_key.value, target.connection_id.value, connectionConfig)
+                : nango.auth(target.integration_unique_key.value, target.connection_id.value, connectionConfig);
+
+        getConnection
+            .then(() => {
+                toast({ variant: 'success', title: 'Connection created!' });
+                track('web:connection_created:legacy', { provider: integration?.provider || 'unknown' });
+                void mutate((key) => typeof key === 'string' && key.startsWith('/api/v1/connections'), undefined);
+                navigate(`/${env}/connections`, { replace: true });
+            })
+            .catch((err: unknown) => {
+                setServerErrorMessage(err instanceof AuthError ? `${err.type} error: ${err.message}` : 'unknown error');
+            });
+    };
+
+    const setUpConnectionConfigParams = (integration: ApiIntegrationList) => {
+        if (integration == null) {
+            return;
+        }
+
+        if (integration.meta.connectionConfigParams == null || integration.meta.connectionConfigParams.length === 0) {
+            setConnectionConfigParams(null);
+            return;
+        }
+
+        const params: Record<string, string> = {};
+        for (const key of Object.keys(integration.meta.connectionConfigParams)) {
+            params[key] = '';
+        }
+        setConnectionConfigParams(params);
+    };
+
+    const handleIntegrationUniqueKeyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const integration = integrations?.find((i) => i.unique_key === e.target.value);
+
+        if (integration != null) {
+            setIntegration(integration);
+            setServerErrorMessage('');
+            setUpConnectionConfigParams(integration);
+            setAuthMode(integration.meta.authMode);
+        }
+    };
+
+    const handleConnectionIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setConnectionId(e.target.value);
+    };
+
+    const handleConnectionConfigParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const params = connectionConfigParams ? Object.assign({}, connectionConfigParams) : {}; // Copy object to update UI.
+        params[e.target.name.replace('connection-config-', '')] = e.target.value;
+        setConnectionConfigParams(params);
+    };
+
+    const handleCredentialParamsChange = (paramName: string, value: string) => {
+        setCredentialsState((prevState) => ({
+            ...prevState,
+            [paramName]: value
+        }));
+    };
+
+    const handleAssertionOptionParamsChange = (paramName: string, value: string) => {
+        setAssertionOptionState((prevState) => ({
+            ...prevState,
+            [paramName]: value
+        }));
+    };
+
+    const handleAuthorizationParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setAuthorizationParams(JSON.parse(e.target.value));
+            setAuthorizationParamsError(false);
+        } catch {
+            setAuthorizationParams(null);
+            setAuthorizationParamsError(true);
+        }
+    };
+
+    const snippet = () => {
+        const args = [];
+        if (!integration) {
+            return '';
+        }
+
+        if (!isCloudProd()) {
+            args.push(`host: '${hostUrl}'`);
+            if (websocketsPath && websocketsPath !== '/') {
+                args.push(`websocketsPath: '${websocketsPath}'`);
+            }
+        }
+
+        if (publicKey) {
+            args.push(`publicKey: '${publicKey}'`);
+        }
+
+        const argsStr = args.length > 0 ? `{ ${args.join(', ')} }` : '';
+
+        let connectionConfigParamsStr = '';
+
+        // Iterate of connection config params and create a string.
+        if (connectionConfigParams != null && Object.keys(connectionConfigParams).length >= 0) {
+            connectionConfigParamsStr = 'params: { ';
+            let hasAnyValue = false;
+            for (const [key, value] of Object.entries(connectionConfigParams)) {
+                if (value !== '') {
+                    connectionConfigParamsStr += `${key}: '${value}', `;
+                    hasAnyValue = true;
+                }
+            }
+            connectionConfigParamsStr = connectionConfigParamsStr.slice(0, -2);
+            connectionConfigParamsStr += ' }';
+            if (!hasAnyValue) {
+                connectionConfigParamsStr = '';
+            }
+        }
+
+        let installationStr = '';
+        if (integration.meta.installation) {
+            installationStr = "installation: 'outbound'";
+        }
+
+        if (authMode === 'OAUTH2' && oauthSelectedScopes.length > 0) {
+            if (connectionConfigParamsStr) {
+                connectionConfigParamsStr += ', ';
+            } else {
+                connectionConfigParamsStr = 'params: { ';
+            }
+            connectionConfigParamsStr += `oauth_scopes_override: '${oauthSelectedScopes.join(',')}', `;
+            connectionConfigParamsStr = connectionConfigParamsStr.slice(0, -2);
+            connectionConfigParamsStr += ' }';
+        }
+
+        let authorizationParamsStr = '';
+
+        // Iterate of authorization params and create a string.
+        if (authorizationParams != null && Object.keys(authorizationParams).length >= 0 && Object.keys(authorizationParams)[0]) {
+            authorizationParamsStr = 'authorization_params: { ';
+            for (const [key, value] of Object.entries(authorizationParams)) {
+                authorizationParamsStr += `${key}: '${value}', `;
+            }
+            authorizationParamsStr = authorizationParamsStr.slice(0, -2);
+            authorizationParamsStr += ' }';
+        }
+
+        let hmacKeyStr = '';
+
+        if (hmacDigest) {
+            hmacKeyStr = `hmac: '${hmacDigest}'`;
+        }
+
+        let userScopesStr = '';
+
+        if (selectedScopes != null && selectedScopes.length > 0) {
+            userScopesStr = 'user_scope: [ ';
+            for (const scope of selectedScopes) {
+                userScopesStr += `'${scope}', `;
+            }
+            userScopesStr = userScopesStr.slice(0, -2);
+            userScopesStr += ' ]';
+        }
+
+        let apiAuthString = '';
+        if (integration.meta.authMode === 'API_KEY') {
+            apiAuthString = `
+    credentials: {
+      apiKey: '${apiKey}'
+    }
+  `;
+        }
+
+        if (integration.meta.authMode === 'BASIC' || integration.meta.authMode === 'SIGNATURE') {
+            apiAuthString = `
+    credentials: {
+      username: '${apiAuthUsername}',
+      password: '${apiAuthPassword}'${
+          integration.meta.authMode === 'SIGNATURE'
+              ? `,
+      Type: 'SIGNATURE'`
+              : ''
+      }
+    }
+  `;
+        }
+
+        let oauthCredentialsString = '';
+
+        if (integration.meta.authMode === 'OAUTH2' && oAuthClientId && oAuthClientSecret) {
+            oauthCredentialsString = `
+    credentials: {
+        oauth_client_id_override: '${oAuthClientId}',
+        oauth_client_secret_override: '${oAuthClientSecret}'
+    }
+  `;
+        }
+        let tbaCredentialsString = '';
+        if (integration.meta.authMode === 'TBA') {
+            if (oAuthClientId && oAuthClientSecret) {
+                tbaCredentialsString = `
+    credentials: {
+        token_id: '${tokenId}',
+        token_secret: '${tokenSecret}',
+        oauth_client_id_override: '${oAuthClientId}',
+        oauth_client_secret_override: '${oAuthClientSecret}'
+    }
+  `;
+            } else {
+                tbaCredentialsString = `
+    credentials: {
+        token_id: '${tokenId}',
+        token_secret: '${tokenSecret}'
+    }
+  `;
+            }
+        }
+
+        let jwtCredentialsString = '';
+
+        if (integration.meta.authMode === 'JWT') {
+            const credentials: string[] = [];
+
+            if (integration.provider.includes('ghost-admin')) {
+                if (typeof credentialsState.privateKey === 'string') {
+                    const [id = '', secret = ''] = credentialsState.privateKey.split(':');
+                    credentials.push(`privateKey: { id: '${id}', secret: '${secret}' }`);
+                }
+            }
+            if (credentials.length > 0) {
+                jwtCredentialsString = `
+    credentials: {
+        ${credentials.join(',\n            ')}
+    }
+    `;
+            }
+        }
+
+        let billCredentialsString = '';
+        if (integration.meta.authMode === 'BILL') {
+            if (apiAuthUsername && apiAuthPassword && organizationId && devKey) {
+                billCredentialsString = `
+    credentials: {
+        username: '${apiAuthUsername}',
+        password: '${apiAuthPassword}',
+        organization_id: '${organizationId}',
+        dev_key: '${devKey}'
+    }
+  `;
+            }
+        }
+
+        let oauth2ClientCredentialsString = '';
+
+        if (integration.meta.authMode === 'OAUTH2_CC') {
+            if (oAuthClientId && oAuthClientSecret) {
+                oauth2ClientCredentialsString = `
+    credentials: {
+        client_id: '${oAuthClientId}',
+        client_secret: '${oAuthClientSecret}'
+    }
+  `;
+            }
+
+            if (oAuthClientId && !oAuthClientSecret) {
+                oauth2ClientCredentialsString = `
+    credentials: {
+        client_id: '${oAuthClientId}'
+    }
+  `;
+            }
+
+            if (!oAuthClientId && oAuthClientSecret) {
+                oauth2ClientCredentialsString = `
+    credentials: {
+        client_secret: '${oAuthClientSecret}'
+    }
+  `;
+            }
+
+            if (clientCertificate || clientPrivateKey) {
+                const existingCredentials = oauth2ClientCredentialsString ? oauth2ClientCredentialsString.trim().slice(0, -1) : 'credentials: {';
+                const certParts = [];
+
+                if (clientCertificate) {
+                    certParts.push(`client_certificate: '${clientCertificate}'`);
+                }
+                if (clientPrivateKey) {
+                    certParts.push(`client_private_key: '${clientPrivateKey}'`);
+                }
+
+                oauth2ClientCredentialsString = `${existingCredentials}${existingCredentials === 'credentials: {' ? '' : ', '}${certParts.join(', ')} }`;
+            }
+
+            if (authMode === 'OAUTH2_CC' && oauthccSelectedScopes.length > 0) {
+                connectionConfigParamsStr = connectionConfigParamsStr ? `${connectionConfigParamsStr.slice(0, -2)}, ` : 'params: { ';
+                connectionConfigParamsStr += `oauth_scopes: '${oauthccSelectedScopes.join(',')}' }`;
+            }
+        }
+
+        let twoStepCredentialsString = '';
+        if (authMode === 'TWO_STEP' || authMode === 'JWT') {
+            const credentialEntries = Object.entries(credentialsState);
+
+            if (credentialEntries.length > 0 && integration && !integration.provider.includes('ghost-admin')) {
+                const credentialsString = credentialEntries.map(([key, value]) => `${key}: '${value}'`).join(',\n      ');
+
+                twoStepCredentialsString = `
+    credentials: {
+      ${credentialsString},
+      type: '${authMode}'
+    }
+  `;
+            }
+        }
+
+        let assertionOptionString = '';
+        if (authMode === 'TWO_STEP') {
+            const assertionOptionEntries = Object.entries(assertionOptionState);
+
+            if (assertionOptionEntries.length > 0) {
+                const assertionOptionValuesString = assertionOptionEntries.map(([key, value]) => `${key}: '${value}'`).join(',\n      ');
+
+                assertionOptionString = `
+    assertionOption: {
+      ${assertionOptionValuesString}
+    }
+  `;
+            }
+        }
+        const connectionConfigStr =
+            !installationStr &&
+            !connectionConfigParamsStr &&
+            !authorizationParamsStr &&
+            !userScopesStr &&
+            !hmacKeyStr &&
+            !apiAuthString &&
+            !oauthCredentialsString &&
+            !oauth2ClientCredentialsString &&
+            !jwtCredentialsString &&
+            !tbaCredentialsString &&
+            !billCredentialsString &&
+            !twoStepCredentialsString &&
+            !assertionOptionString
+                ? ''
+                : ', { ' +
+                  [
+                      installationStr,
+                      connectionConfigParamsStr,
+                      authorizationParamsStr,
+                      hmacKeyStr,
+                      userScopesStr,
+                      apiAuthString,
+                      oauthCredentialsString,
+                      oauth2ClientCredentialsString,
+                      jwtCredentialsString,
+                      tbaCredentialsString,
+                      billCredentialsString,
+                      twoStepCredentialsString,
+                      assertionOptionString
+                  ]
+                      .filter(Boolean)
+                      .join(', ') +
+                  '}';
+
+        return `import Nango from '@nangohq/frontend';
+
+const nango = new Nango(${argsStr});
+
+nango.${integration.meta.authMode === 'NONE' ? 'create' : 'auth'}('${integration.unique_key}', '${connectionId}'${connectionConfigStr})
+  .then((result: { providerConfigKey: string; connectionId: string }) => {
+    // do something
+  }).catch((err: { message: string; type: string }) => {
+    // handle error
+  });`;
+    };
+
+    return (
+        <DashboardLayout>
+            <Helmet>
+                <title>Create Connection - Nango</title>
+            </Helmet>
+            {integrations && !!integrations.length && publicKey && hostUrl && (
+                <div className="pb-40">
+                    <h2 className="text-left text-3xl font-semibold tracking-tight text-text-strong mb-12">Add New Connection</h2>
+                    <div className="h-fit border border-border-default rounded-md text-text-strong text-sm py-14 px-8">
+                        <form className="space-y-6" onSubmit={handleCreate}>
+                            <div>
+                                <div>
+                                    <div className="flex">
+                                        <label htmlFor="integration_unique_key" className="text-text-secondary block text-sm font-semibold">
+                                            Integration Unique Key
+                                        </label>
+                                    </div>
+                                    <div className="mt-1">
+                                        <select
+                                            id="integration_unique_key"
+                                            name="integration_unique_key"
+                                            className="border-border-default bg-surface-input text-text-secondary focus:border-border-selected focus:ring-border-selected block w-full appearance-none rounded-md border px-3 py-1 text-sm placeholder:text-text-disabled shadow-xs focus:outline-hidden"
+                                            onChange={handleIntegrationUniqueKeyChange}
+                                            defaultValue={integration?.unique_key}
+                                        >
+                                            {integrations.map((integration) => (
+                                                <option key={integration.unique_key}>{integration.unique_key}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="connection_id" className="text-text-secondary block text-sm font-semibold">
+                                            Connection ID
+                                        </label>
+                                        <Tooltip>
+                                            <TooltipTrigger className="inline-flex cursor-help border-0 bg-transparent p-0">
+                                                <HelpCircle className="h-5 ml-1 text-text-muted" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>{`The ID you will use to retrieve the connection (most often the user ID).`}</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="mt-1">
+                                        <input
+                                            id="connection_id"
+                                            name="connection_id"
+                                            type="text"
+                                            defaultValue={connectionId}
+                                            autoComplete="new-password"
+                                            required
+                                            className="border-border-default bg-surface-input text-text-secondary focus:border-border-selected focus:ring-border-selected block w-full appearance-none rounded-md border px-3 py-1 text-sm placeholder:text-text-disabled shadow-xs focus:outline-hidden"
+                                            onChange={handleConnectionIdChange}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            {integration?.provider === 'slack' && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="user_scopes" className="text-text-secondary block text-sm font-semibold">
+                                            User Scopes (Slack Only)
+                                        </label>
+                                    </div>
+                                    <div className="mt-1">
+                                        <ScopesInput
+                                            scopesString={selectedScopes.join(',')}
+                                            onChange={(newScopesString) => {
+                                                setSelectedScopes(newScopesString ? newScopesString.split(',').filter(Boolean) : []);
+                                                return Promise.resolve();
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {authMode === 'OAUTH2_CC' && (
+                                <>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center mb-1">
+                                            <span className="text-text-muted text-xs">Client ID</span>
+                                        </div>
+                                        <div className="flex text-text-strong mt-1 items-center">
+                                            <div className="w-full relative">
+                                                <SecretInput
+                                                    copy={true}
+                                                    id="oauth_client_id"
+                                                    name="oauth_client_id"
+                                                    placeholder="Find the Client ID on the developer portal of the external API provider."
+                                                    value={oAuthClientId}
+                                                    onChange={(e) => setOAuthClientId(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center mb-1">
+                                            <span className="text-text-muted text-xs">Client Secret</span>
+                                        </div>
+                                        <div className="mt-1">
+                                            <SecretInput
+                                                copy={true}
+                                                id="client_secret"
+                                                name="client_secret"
+                                                autoComplete="one-time-code"
+                                                placeholder="Find the Client Secret on the developer portal of the external API provider."
+                                                required
+                                                value={oAuthClientSecret}
+                                                onChange={(e) => setOAuthClientSecret(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center mb-1">
+                                            <span className="text-text-muted text-xs">Scopes</span>
+                                        </div>
+                                        <div className="mt-1">
+                                            <ScopesInput
+                                                scopesString={oauthccSelectedScopes.join(',')}
+                                                onChange={(newScopesString) => {
+                                                    setOauthccSelectedScopes(newScopesString ? newScopesString.split(',').filter(Boolean) : []);
+                                                    return Promise.resolve();
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {integration?.meta.requireClientCertificate && (
+                                <>
+                                    <div className="flex flex-col mt-4">
+                                        <div className="flex items-center mb-1">
+                                            <span className="text-text-muted text-xs">Client Certificate</span>
+                                        </div>
+                                        <div className="mt-1">
+                                            <SecretInput
+                                                copy={true}
+                                                id="client_certificate"
+                                                name="client_certificate"
+                                                placeholder="Paste the full PEM-encoded client certificate"
+                                                value={clientCertificate}
+                                                onChange={(e) => setClientCertificate(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col mt-4">
+                                        <div className="flex items-center mb-1">
+                                            <span className="text-text-muted text-xs">Private Key</span>
+                                        </div>
+                                        <div className="mt-1">
+                                            <SecretInput
+                                                copy={true}
+                                                id="client_private_key"
+                                                name="client_private_key"
+                                                placeholder="Paste the full PEM-encoded private key"
+                                                value={clientPrivateKey}
+                                                onChange={(e) => setClientPrivateKey(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {integration?.provider.includes('netsuite') && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="user_scopes" className="text-text-secondary block text-sm font-semibold">
+                                            OAuth Credentials Override
+                                        </label>
+                                    </div>
+                                    <div className="mt-1">
+                                        <SecretInput
+                                            copy={true}
+                                            id="oauth_client_id"
+                                            name="oauth_client_id"
+                                            placeholder="OAuth Client ID Override"
+                                            value={oAuthClientId}
+                                            onChange={(e) => setOAuthClientId(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="mt-8">
+                                        <SecretInput
+                                            copy={true}
+                                            id="oauth_client_secret"
+                                            name="oauth_client_secret"
+                                            placeholder="OAuth Client Secret Override"
+                                            value={oAuthClientSecret}
+                                            onChange={(e) => setOAuthClientSecret(e.target.value)}
+                                        />
+                                    </div>
+                                    {integration?.provider !== 'netsuite-tba' && (
+                                        <>
+                                            <div className="flex mt-6">
+                                                <label htmlFor="oauth_scopes" className="text-text-secondary block text-sm font-semibold">
+                                                    OAuth Scope Override
+                                                </label>
+                                            </div>
+                                            <div className="mt-1">
+                                                <ScopesInput
+                                                    scopesString={oauthSelectedScopes.join(',')}
+                                                    onChange={(newScopesString) => {
+                                                        setOauthSelectedScopes(newScopesString ? newScopesString.split(',').filter(Boolean) : []);
+                                                        return Promise.resolve();
+                                                    }}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {integration?.meta.authMode === 'TBA' && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="token_id" className="text-text-secondary block text-sm font-semibold">
+                                            Token ID
+                                        </label>
+                                    </div>
+                                    <div className="mt-1">
+                                        <SecretInput
+                                            copy={true}
+                                            id="token_id"
+                                            name="token_id"
+                                            placeholder="Token ID"
+                                            value={tokenId}
+                                            onChange={(e) => setTokenId(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <label htmlFor="token_secret" className="text-text-secondary block text-sm font-semibold">
+                                            Token Secret
+                                        </label>
+                                        <SecretInput
+                                            copy={true}
+                                            id="token_secret"
+                                            name="token_secret"
+                                            placeholder="Token secret"
+                                            value={tokenSecret}
+                                            onChange={(e) => setTokenSecret(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {integration?.meta.connectionConfigParams?.map((paramName: string) => (
+                                <div key={paramName}>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="extra_configuration" className="text-text-secondary block text-sm font-semibold">
+                                            Extra Configuration: {paramName}
+                                        </label>
+                                        <Tooltip>
+                                            <TooltipTrigger className="inline-flex cursor-help border-0 bg-transparent p-0">
+                                                <HelpCircle className="h-5 ml-1 text-text-muted" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <span>Some integrations require extra configuration (cf. </span>
+                                                <a
+                                                    href="https://nango.dev/docs/guides/auth/customize-connect-ui#handle-apis-requiring-connection-specific-configuration-for-authorization"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-text-link hover:text-text-link"
+                                                >
+                                                    docs
+                                                </a>
+                                                <span>).</span>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="mt-1">
+                                        <input
+                                            id={`connection-config-${paramName}`}
+                                            name={`connection-config-${paramName}`}
+                                            type="text"
+                                            required
+                                            autoComplete="new-password"
+                                            className="border-border-default bg-surface-input text-text-secondary focus:border-border-selected focus:ring-border-selected block w-full appearance-none rounded-md border px-3 py-1 text-sm placeholder:text-text-disabled shadow-xs focus:outline-hidden"
+                                            onChange={handleConnectionConfigParamsChange}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+
+                            {(authMode === 'API_KEY' || authMode === 'BASIC' || authMode === 'BILL' || authMode === 'SIGNATURE') && (
+                                <div>
+                                    <div>
+                                        <label htmlFor="email" className="text-text-secondary block text-sm font-semibold">
+                                            Auth Type
+                                        </label>
+                                        <p className="mt-3 mb-5">{authMode}</p>
+                                    </div>
+
+                                    {(authMode === 'BASIC' || authMode === 'BILL' || authMode === 'SIGNATURE') && (
+                                        <div>
+                                            <div className="flex mt-6">
+                                                <label htmlFor="username" className="text-text-secondary block text-sm font-semibold">
+                                                    Username
+                                                </label>
+                                            </div>
+
+                                            <div className="mt-1">
+                                                <SecretInput
+                                                    copy={true}
+                                                    id="username"
+                                                    name="username"
+                                                    value={apiAuthUsername}
+                                                    onChange={(e) => setApiAuthUsername(e.target.value)}
+                                                />
+                                            </div>
+
+                                            <div className="flex mt-6">
+                                                <label htmlFor="password" className="text-text-secondary block text-sm font-semibold">
+                                                    Password
+                                                </label>
+                                            </div>
+
+                                            <div className="mt-1">
+                                                <SecretInput
+                                                    copy={true}
+                                                    id="password"
+                                                    name="password"
+                                                    value={apiAuthPassword}
+                                                    onChange={(e) => setApiAuthPassword(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {authMode === 'API_KEY' && (
+                                        <div>
+                                            <div className="flex mt-6">
+                                                <label htmlFor="connection_id" className="text-text-secondary block text-sm font-semibold">
+                                                    API Key
+                                                </label>
+                                                <Tooltip>
+                                                    <TooltipTrigger className="inline-flex cursor-help border-0 bg-transparent p-0">
+                                                        <HelpCircle className="h-5 ml-1 text-text-muted" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>{`The API key to authenticate requests`}</TooltipContent>
+                                                </Tooltip>
+                                            </div>
+
+                                            <div className="mt-1">
+                                                <SecretInput
+                                                    copy={true}
+                                                    id="api_key"
+                                                    name="api_key"
+                                                    value={apiKey}
+                                                    onChange={(e) => setApiKey(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {integration?.meta.authMode === 'BILL' && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="username" className="text-text-secondary block text-sm font-semibold">
+                                            Organization ID
+                                        </label>
+                                    </div>
+                                    <div className="mt-1">
+                                        <SecretInput
+                                            copy={true}
+                                            id="pat_name"
+                                            name="pat_name"
+                                            placeholder="Organization ID"
+                                            value={organizationId}
+                                            onChange={(e) => setOrganizationId(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="mt-4">
+                                        <label htmlFor="dev_key" className="text-text-secondary block text-sm font-semibold">
+                                            Dev Key
+                                        </label>
+                                        <SecretInput
+                                            copy={true}
+                                            id="dev_key"
+                                            name="dev_key"
+                                            placeholder="Dev Key"
+                                            value={devKey}
+                                            onChange={(e) => setDevKey(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {authMode === 'APP' && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="optional_authorization_params" className="text-text-secondary block text-sm font-semibold">
+                                            Optional: Additional Authorization Params
+                                        </label>
+                                        <Tooltip>
+                                            <TooltipTrigger className="inline-flex cursor-help border-0 bg-transparent p-0">
+                                                <HelpCircle className="h-5 ml-1 text-text-muted" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>{`Add query parameters in the authorization URL, on a per-connection basis. Most integrations don't require this. This should be formatted as a JSON object, e.g. { "key" : "value" }. `}</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="mt-1">
+                                        <input
+                                            id="authorization_params"
+                                            name="authorization_params"
+                                            type="text"
+                                            autoComplete="new-password"
+                                            defaultValue="{ }"
+                                            className={`${authorizationParamsError ? 'border-border-danger' : 'border-border-default'}  ${
+                                                authorizationParamsError ? 'text-status-danger-text' : 'text-text-secondary'
+                                            } focus:ring-border-selected bg-surface-input block focus:border-border-selected w-full appearance-none rounded-md border px-3 py-1 text-sm placeholder:text-text-disabled shadow-xs focus:outline-hidden`}
+                                            onChange={handleAuthorizationParamsChange}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {(authMode === 'OAUTH1' || authMode === 'OAUTH2') && (
+                                <div>
+                                    <div className="flex mt-6">
+                                        <label htmlFor="optional_authorization_params" className="text-text-secondary block text-sm font-semibold">
+                                            Optional: Additional Authorization Params
+                                        </label>
+                                        <Tooltip>
+                                            <TooltipTrigger className="inline-flex cursor-help border-0 bg-transparent p-0">
+                                                <HelpCircle className="h-5 ml-1 text-text-muted" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>{`Add query parameters in the authorization URL, on a per-connection basis. Most integrations don't require this. This should be formatted as a JSON object, e.g. { "key" : "value" }. `}</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="mt-1">
+                                        <input
+                                            id="authorization_params"
+                                            name="authorization_params"
+                                            type="text"
+                                            autoComplete="new-password"
+                                            defaultValue="{ }"
+                                            className={`${authorizationParamsError ? 'border-border-danger' : 'border-border-default'}  ${
+                                                authorizationParamsError ? 'text-status-danger-text' : 'text-text-secondary'
+                                            } focus:ring-border-selected bg-surface-input block focus:border-border-selected focus:ring-border-selected block w-full appearance-none rounded-md border px-3 py-1 text-sm placeholder:text-text-disabled shadow-xs focus:outline-hidden`}
+                                            onChange={handleAuthorizationParamsChange}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {(authMode === 'TWO_STEP' || authMode === 'JWT') && (
+                                <div>
+                                    {integration?.meta.credentialParams
+                                        ?.filter((paramName: string) => {
+                                            if (paramName === 'assertion' && integration?.meta.assertionOptionParams) {
+                                                return false;
+                                            }
+                                            return true;
+                                        })
+                                        .map((paramName: string) => (
+                                            <div key={paramName}>
+                                                <div className="flex mt-6">
+                                                    <label htmlFor={`credential-${paramName}`} className="text-text-secondary block text-sm font-semibold">
+                                                        {paramName.charAt(0).toUpperCase() + paramName.slice(1)}
+                                                    </label>
+                                                </div>
+
+                                                <div className="mt-1">
+                                                    <SecretInput
+                                                        copy={true}
+                                                        id={`credential-${paramName}`}
+                                                        name={`credential-${paramName}`}
+                                                        value={credentialsState[paramName]}
+                                                        onChange={(e) => handleCredentialParamsChange(paramName, e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    {authMode === 'TWO_STEP' &&
+                                        integration?.meta.assertionOptionParams?.map((paramName: string) => (
+                                            <div key={paramName}>
+                                                <div className="flex mt-6">
+                                                    <label
+                                                        htmlFor={`assertion-option-${paramName}`}
+                                                        className="text-text-secondary block text-sm font-semibold"
+                                                    >
+                                                        {paramName.charAt(0).toUpperCase() + paramName.slice(1)}
+                                                    </label>
+                                                </div>
+
+                                                <div className="mt-1">
+                                                    <SecretInput
+                                                        copy={true}
+                                                        id={`assertion-option-${paramName}`}
+                                                        name={`assertion-option-${paramName}`}
+                                                        value={assertionOptionState[paramName]}
+                                                        onChange={(e) => handleAssertionOptionParamsChange(paramName, e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
+                            <div>
+                                {serverErrorMessage && <p className="mt-6 text-sm text-status-danger-text">{serverErrorMessage}</p>}
+                                <div className="flex">
+                                    <button
+                                        type="submit"
+                                        className="bg-surface-panel mt-4 h-8 rounded-md hover:bg-surface-panel-inset border px-3 pt-0.5 text-sm text-text-strong"
+                                    >
+                                        {authMode === 'OAUTH1' || authMode === 'OAUTH2' ? <>Start OAuth Flow</> : <>Create Connection</>}
+                                    </button>
+                                    <label htmlFor="email" className="text-text-secondary block text-sm pt-5 ml-4">
+                                        or from your frontend:
+                                    </label>
+                                </div>
+                                <div>
+                                    <div className="mt-6">
+                                        <Prism className="transparent-code" language="typescript" colorScheme="dark">
+                                            {snippet()}
+                                        </Prism>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {integrations && !integrations.length && (
+                <div className="mx-auto">
+                    <div className="mx-16">
+                        <h2 className="mt-16 text-left text-3xl font-semibold tracking-tight text-text-strong mb-12">Add New Connection</h2>
+                        <div className="text-sm w-largebox h-40">
+                            <p className="text-text-strong text-sm">
+                                You have not created any Integrations yet. Please create an{' '}
+                                <Link to={`/${env}/integrations`} className="text-text-link">
+                                    Integration
+                                </Link>{' '}
+                                first to create a Connection. Follow the{' '}
+                                <a href="https://nango.dev/docs/guides/auth/auth-guide" className="text-text-link" target="_blank" rel="noreferrer">
+                                    Authorize an API guide
+                                </a>{' '}
+                                for more instructions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </DashboardLayout>
+    );
+};

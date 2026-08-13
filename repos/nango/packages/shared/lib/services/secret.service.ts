@@ -1,0 +1,195 @@
+import * as uuid from 'uuid';
+
+import { Err, Ok, PBKDF2_ITERATIONS } from '@nangohq/utils';
+
+import { getEncryptionManager, pbkdf2 } from '../utils/encryption.manager.js';
+import { NangoError } from '../utils/error.js';
+
+import type { DBAPISecret, DBEnvironment, Result } from '@nangohq/types';
+import type { Knex } from 'knex';
+
+const API_SECRETS_TABLE = 'api_secrets';
+
+class SecretService {
+    public async getDefaultSecretForEnv(trx: Knex, env: Pick<DBEnvironment, 'id' | 'name'>): Promise<Result<DBAPISecret>> {
+        try {
+            const [secret] = await trx<DBAPISecret>(API_SECRETS_TABLE).select('*').where({
+                environment_id: env.id,
+                is_default: true
+            });
+            if (!secret) {
+                // Invariant violation: There is no default secret for this environment.
+                // This should never happen. If it somehow does, we roll back the surrounding trx
+                // by throwing, and let the exception bubble up the call chain.
+                throw new NangoError('no_default_api_secret', { environment_id: env.id });
+            }
+            const decrypted = getEncryptionManager().decryptAPISecret(secret); // Callers expect unencrypted secret.
+
+            // Self-hosted operator override: NANGO_SECRET_KEY_<ENV_NAME> takes precedence,
+            // mirroring the override honored by account.service#getAccountContextBySecretKey
+            // and the dashboard's getEnvironment controller. Without this, webhook HMAC
+            // signing diverges from what callers expect when they configure the env var.
+            const override = process.env[`NANGO_SECRET_KEY_${env.name.toUpperCase()}`];
+            if (override) {
+                decrypted.secret = override;
+            }
+
+            return Ok(decrypted);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async getAllSecretsForEnv(trx: Knex, envId: number): Promise<Result<DBAPISecret[]>> {
+        try {
+            const secrets = await trx<DBAPISecret>(API_SECRETS_TABLE).select('*').where({ environment_id: envId });
+            const decrypted = secrets.map((secret) => getEncryptionManager().decryptAPISecret(secret)); // Callers expect unencrypted secret.
+            return Ok(decrypted);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async getDefaultSecretsForAllEnvs(trx: Knex, envIds: number[]): Promise<Result<Map<(typeof envIds)[number], DBAPISecret>>> {
+        try {
+            const out = new Map<(typeof envIds)[number], DBAPISecret>();
+            const rows = await trx<DBAPISecret>(API_SECRETS_TABLE).select('*').where({ is_default: true }).whereIn('environment_id', envIds);
+            for (const row of rows) {
+                out.set(row.environment_id, getEncryptionManager().decryptAPISecret(row)); // Callers expect unencrypted secrets.
+            }
+            if (envIds.length !== out.size) {
+                // Invariant violation: One of the given envIds didn't have a default secret.
+                // This should never happen. If it somehow does, we roll back the surrounding trx
+                // by throwing, and let the exception bubble up the call chain.
+                for (const envId of envIds) {
+                    if (!out.has(envId)) {
+                        throw new NangoError('no_default_api_secret', { environment_id: envId });
+                    }
+                }
+                throw new NangoError('impossible_condition');
+            }
+            return Ok(out);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async getAllSecretsForAllEnvs(trx: Knex, envIds: number[]): Promise<Result<Map<(typeof envIds)[number], DBAPISecret[]>>> {
+        try {
+            const out = new Map<(typeof envIds)[number], DBAPISecret[]>();
+            const rows = await trx<DBAPISecret>(API_SECRETS_TABLE).select('*').whereIn('environment_id', envIds);
+            for (const row of rows) {
+                const secrets = out.get(row.environment_id) || [];
+                secrets.push(getEncryptionManager().decryptAPISecret(row)); // Callers expect unencrypted secrets.
+                out.set(row.environment_id, secrets);
+            }
+            return Ok(out);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async createSecret(
+        trx: Knex,
+        {
+            environmentId,
+            displayName,
+            isDefault
+        }: {
+            environmentId: number;
+            displayName?: string;
+            isDefault: boolean;
+        }
+    ): Promise<Result<DBAPISecret>> {
+        try {
+            // Note: For now, we enforce max 1 default + 1 non-default key.
+            // This will change in the near future.
+            const params = {
+                environment_id: environmentId,
+                is_default: isDefault
+            };
+            const [existing] = await trx<DBAPISecret>(API_SECRETS_TABLE).select('id').where(params);
+            if (existing) {
+                return Err(new NangoError('duplicate_api_secret', params));
+            }
+
+            const plainText = uuid.v4();
+
+            const hashed = await this.hashSecret(plainText);
+            if (hashed.isErr()) {
+                throw hashed.error;
+            }
+
+            const secret = {
+                environment_id: environmentId,
+                display_name: displayName ?? new Date().toISOString(),
+                secret: plainText,
+                iv: '',
+                tag: '',
+                hashed: hashed.value,
+                is_default: isDefault
+            } satisfies Partial<DBAPISecret>;
+
+            const encrypted = getEncryptionManager().encryptAPISecret(secret);
+
+            const [created] = await trx<DBAPISecret>(API_SECRETS_TABLE).insert(encrypted).returning('*');
+            if (!created) {
+                // The insert above throws if it fails.
+                // But we're defensive: If for any reason it were to fail without throwing, we throw.
+                throw new NangoError('impossible_condition');
+            }
+            created.secret = plainText; // Callers expect unencrypted secret.
+            return Ok(created);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async markDefault(trx: Knex, secretId: number): Promise<Result<void>> {
+        try {
+            await trx.transaction(async (trx) => {
+                const [secret] = await trx<DBAPISecret>(API_SECRETS_TABLE).select('environment_id').where({ id: secretId });
+                if (!secret) {
+                    throw new NangoError('no_such_api_secret', { id: secretId });
+                }
+                await trx<DBAPISecret>(API_SECRETS_TABLE)
+                    .where({
+                        environment_id: secret.environment_id,
+                        is_default: true
+                    })
+                    .update({
+                        is_default: false,
+                        updated_at: trx.fn.now()
+                    });
+                await trx<DBAPISecret>(API_SECRETS_TABLE)
+                    .where({
+                        id: secretId,
+                        environment_id: secret.environment_id,
+                        is_default: false
+                    })
+                    .update({
+                        is_default: true,
+                        updated_at: trx.fn.now()
+                    });
+            });
+            return Ok();
+        } catch (err) {
+            return Err(err);
+        }
+    }
+
+    public async hashSecret(plainText: string): Promise<Result<string>> {
+        try {
+            if (!getEncryptionManager().shouldEncrypt()) {
+                return Ok(plainText);
+            }
+            const key = getEncryptionManager().getKey();
+            const hash = (await pbkdf2(plainText, key, PBKDF2_ITERATIONS, 32, 'sha256')).toString('base64');
+            return Ok(hash);
+        } catch (err) {
+            return Err(err);
+        }
+    }
+}
+
+export default new SecretService();

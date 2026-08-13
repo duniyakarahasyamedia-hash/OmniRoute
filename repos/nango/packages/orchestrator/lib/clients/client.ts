@@ -1,0 +1,656 @@
+import { Err, getLogger, Ok, retry, routeFetch } from '@nangohq/utils';
+
+import { route as postDequeueRoute } from '../routes/v1/postDequeue.js';
+import { route as postImmediateRoute } from '../routes/v1/postImmediate.js';
+import { route as postImmediateBatchRoute } from '../routes/v1/postImmediateBatch.js';
+import { route as postRecurringRoute } from '../routes/v1/postRecurring.js';
+import { route as putRecurringRoute } from '../routes/v1/putRecurring.js';
+import { route as putRecurringStatesRoute } from '../routes/v1/putRecurringStates.js';
+import { route as getRetryOutputRoute } from '../routes/v1/retries/retryKey/getOutput.js';
+import { route as postScheduleRunRoute } from '../routes/v1/schedules/postRun.js';
+import { route as postSchedulesSearchRoute } from '../routes/v1/schedules/postSearch.js';
+import { route as postTasksSearchRoute } from '../routes/v1/tasks/postSearch.js';
+import { route as putTaskRoute } from '../routes/v1/tasks/putTaskId.js';
+import { route as getOutputRoute } from '../routes/v1/tasks/taskId/getOutput.js';
+import { route as postHeartbeatRoute } from '../routes/v1/tasks/taskId/postHeartbeat.js';
+import { validateSchedule, validateTask } from './validate.js';
+
+import type { PostImmediate } from '../routes/v1/postImmediate.js';
+import type {
+    ClientError,
+    ExecuteActionProps,
+    ExecuteAsyncReturn,
+    ExecuteOnEventProps,
+    ExecuteProps,
+    ExecuteReturn,
+    ExecuteSyncProps,
+    ExecuteWebhookProps,
+    ImmediateProps,
+    OrchestratorTask,
+    RecurringProps,
+    SchedulesReturn,
+    VoidReturn
+} from './types.js';
+import type { Endpoint } from '@nangohq/types';
+import type { Result, RetryConfig, Route } from '@nangohq/utils';
+import type { JsonValue } from 'type-fest';
+
+const logger = getLogger('orchestrator.client');
+
+export class OrchestratorClient {
+    private baseUrl: string;
+
+    constructor({ baseUrl }: { baseUrl: string }) {
+        this.baseUrl = baseUrl;
+    }
+
+    private routeFetch<E extends Endpoint<any>>(
+        route: Route<E>,
+        config?: {
+            timeoutMs?: number;
+            retryConfig?: RetryConfig<E['Reply']>;
+        }
+    ): (props: { query?: E['Querystring']; body?: E['Body']; params?: E['Params'] }) => Promise<E['Reply']> {
+        return (props) => {
+            const fetch = async () => {
+                return await routeFetch(this.baseUrl, route, { timeoutMs: config?.timeoutMs })(props);
+            };
+            const retryConfig: RetryConfig<E['Reply']> = config?.retryConfig || {
+                maxAttempts: 3,
+                delayMs: 50,
+                retryIf: (res) => 'error' in res
+            };
+            return retry(fetch, retryConfig);
+        };
+    }
+
+    public async immediate(props: ImmediateProps): Promise<Result<PostImmediate['Success'], ClientError>> {
+        const res = await this.routeFetch(postImmediateRoute)({ body: props });
+        if ('error' in res) {
+            const duplicateMessage = getErrorMessageForCode(res.error.payload, 'duplicate_task_name');
+            if (duplicateMessage !== null) {
+                return Err({
+                    name: 'duplicate_task_name',
+                    message: duplicateMessage || 'Task with this name already exists',
+                    payload: {}
+                });
+            }
+
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error scheduling immediate task`,
+                payload: { ...props, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(res);
+        }
+    }
+
+    public async recurring(props: RecurringProps): Promise<Result<{ scheduleId: string }, ClientError>> {
+        const res = await this.routeFetch(postRecurringRoute)({
+            body: {
+                name: props.name,
+                state: props.state,
+                startsAt: props.startsAt,
+                frequencyMs: props.frequencyMs,
+                group: props.group,
+                retry: props.retry,
+                timeoutSettingsInSecs: props.timeoutSettingsInSecs,
+                args: props.args
+            }
+        });
+        if ('error' in res) {
+            const startsAt = props.startsAt.toISOString();
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error creating recurring schedule`,
+                payload: { ...props, startsAt, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(res);
+        }
+    }
+
+    public async pauseSync({ scheduleName }: { scheduleName: string }): Promise<VoidReturn> {
+        return this.setSyncState({ scheduleName, state: 'PAUSED' });
+    }
+
+    public async unpauseSync({ scheduleName }: { scheduleName: string }): Promise<VoidReturn> {
+        return this.setSyncState({ scheduleName, state: 'STARTED' });
+    }
+
+    public async deleteSync({ scheduleName }: { scheduleName: string }): Promise<VoidReturn> {
+        return this.setSyncState({ scheduleName, state: 'DELETED' });
+    }
+
+    public async deleteSyncs({ scheduleNames }: { scheduleNames: string[] }): Promise<VoidReturn> {
+        return this.setSyncStates({ scheduleNames, state: 'DELETED' });
+    }
+
+    private async setSyncStates({ scheduleNames, state }: { scheduleNames: string[]; state: 'STARTED' | 'PAUSED' | 'DELETED' }): Promise<VoidReturn> {
+        const res = await this.routeFetch(putRecurringStatesRoute)({
+            body: { names: scheduleNames, state }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error setting schedule states`,
+                payload: { scheduleNames, state, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(undefined);
+        }
+    }
+
+    private async setSyncState({ scheduleName, state }: { scheduleName: string; state: 'STARTED' | 'PAUSED' | 'DELETED' }): Promise<VoidReturn> {
+        const res = await this.routeFetch(putRecurringRoute)({
+            body: { schedule: { name: scheduleName, state } }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error setting schedule state`,
+                payload: { scheduleName, state, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(undefined);
+        }
+    }
+
+    public async updateSyncFrequency({ scheduleName, frequencyMs }: { scheduleName: string; frequencyMs: number }): Promise<VoidReturn> {
+        const res = await this.routeFetch(putRecurringRoute)({
+            body: { schedule: { name: scheduleName, frequencyMs } }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error updating schedule frequency`,
+                payload: { scheduleName, frequencyMs, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(undefined);
+        }
+    }
+
+    public async executeSync(props: ExecuteSyncProps): Promise<VoidReturn> {
+        const res = await this.routeFetch(postScheduleRunRoute, {
+            // A schedule that already has an active task or is being mutated is a terminal answer, not a transient failure
+            retryConfig: {
+                maxAttempts: 3,
+                delayMs: 50,
+                retryIf: (res) =>
+                    'error' in res &&
+                    getErrorMessageForCode(res.error.payload, 'schedule_task_already_running') === null &&
+                    getErrorMessageForCode(res.error.payload, 'schedule_locked') === null
+            }
+        })({
+            body: {
+                scheduleName: props.scheduleName,
+                extra: props.extra
+            }
+        });
+        if ('error' in res) {
+            const alreadyRunning = getErrorMessageForCode(res.error.payload, 'schedule_task_already_running');
+            if (alreadyRunning !== null) {
+                return Err({
+                    name: 'schedule_task_already_running',
+                    message: alreadyRunning || 'A task for this schedule is already running',
+                    payload: {}
+                });
+            }
+
+            const locked = getErrorMessageForCode(res.error.payload, 'schedule_locked');
+            if (locked !== null) {
+                return Err({
+                    name: 'schedule_locked',
+                    message: locked || 'Schedule is being mutated by another operation',
+                    payload: {}
+                });
+            }
+
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error creating recurring schedule`,
+                payload: { ...props, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(undefined);
+        }
+    }
+
+    private async immediateAndWait(props: ExecuteProps): Promise<ExecuteReturn> {
+        const scheduleProps = {
+            retry: { count: 0, max: 0 },
+            timeoutSettingsInSecs: { createdToStarted: 30, startedToCompleted: 30, heartbeat: 60 },
+            ...props
+        } as ImmediateProps;
+        const res = await this.immediate(scheduleProps);
+        if (res.isErr()) {
+            return Err(res.error);
+        }
+        const taskId = res.value.taskId;
+        const retryUntil = Date.now() + (scheduleProps.timeoutSettingsInSecs.createdToStarted + scheduleProps.timeoutSettingsInSecs.startedToCompleted) * 1000;
+        const getOutput = await this.routeFetch(getOutputRoute, {
+            retryConfig: {
+                maxAttempts: 1000,
+                delayMs: 100,
+                retryIf: (res) => 'error' in res && Date.now() < retryUntil
+            }
+        })({ params: { taskId }, query: { longPolling: 30_000 } });
+
+        if ('error' in getOutput) {
+            return Err({
+                name: getOutput.error.code,
+                message: getOutput.error.message || `Error fetching task '${taskId}' output`,
+                payload: { response: getOutput.error.payload as any }
+            });
+        } else {
+            switch (getOutput.state) {
+                case 'CREATED':
+                case 'STARTED':
+                    return Err({
+                        name: 'task_in_progress_error',
+                        message: `Task ${taskId} is in progress`,
+                        payload: getOutput.output
+                    });
+                case 'SUCCEEDED':
+                    return Ok(getOutput.output);
+                case 'FAILED':
+                    return Err({
+                        name: 'task_failed_error',
+                        message: `Task ${taskId} failed`,
+                        payload: getOutput.output
+                    });
+                case 'EXPIRED':
+                    return Err({
+                        name: 'task_expired_error',
+                        message: `Task ${taskId} expired`,
+                        payload: getOutput.output
+                    });
+                case 'CANCELLED':
+                    return Err({
+                        name: 'task_cancelled_error',
+                        message: `Task ${taskId} cancelled`,
+                        payload: getOutput.output
+                    });
+            }
+        }
+    }
+
+    public async executeAction(props: ExecuteActionProps): Promise<ExecuteReturn> {
+        const { args, ...rest } = props;
+        const schedulingProps = {
+            ...rest,
+            timeoutSettingsInSecs: {
+                createdToStarted: 30,
+                startedToCompleted: 15 * 60,
+                heartbeat: 5 * 60
+            },
+            args: {
+                ...args,
+                type: 'action' as const
+            }
+        };
+        return this.immediateAndWait(schedulingProps);
+    }
+
+    public async executeActionAsync(props: ExecuteActionProps): Promise<ExecuteAsyncReturn> {
+        const { args, ...rest } = props;
+        const schedulingProps: ImmediateProps = {
+            ...rest,
+            retry: { count: props.retry?.count || 0, max: props.retry?.max || 0 },
+            timeoutSettingsInSecs: {
+                createdToStarted: 24 * 60 * 60, // async action must starts within 24h after being created
+                startedToCompleted: 15 * 60,
+                heartbeat: 5 * 60
+            },
+            args: {
+                ...args,
+                type: 'action' as const
+            }
+        };
+        return this.immediate(schedulingProps);
+    }
+
+    private buildWebhookSchedulingProps(props: ExecuteWebhookProps) {
+        const { args, ...rest } = props;
+        return {
+            ...rest,
+            retry: { count: 0, max: 0 },
+            timeoutSettingsInSecs: {
+                createdToStarted: 5 * 60,
+                startedToCompleted: 60 * 60,
+                heartbeat: 5 * 60
+            },
+            args: {
+                ...args,
+                type: 'webhook' as const
+            }
+        };
+    }
+
+    public async executeWebhook(props: ExecuteWebhookProps): Promise<ExecuteReturn> {
+        const res = await this.immediate(this.buildWebhookSchedulingProps(props));
+        if (res.isErr()) {
+            return Err(res.error);
+        }
+        return Ok({ taskId: res.value.taskId, retryKey: res.value.retryKey });
+    }
+
+    /**
+     * Schedule a batch of webhooks in a single orchestrator call.
+     *
+     * Returns per-entry results in input order.
+     */
+    public async executeWebhookBatch(propsList: ExecuteWebhookProps[]): Promise<Result<ExecuteWebhookBatchEntryResult[], ClientError>> {
+        if (propsList.length === 0) {
+            return Ok([]);
+        }
+        const entries = propsList.map((props) => {
+            const schedulingProps = this.buildWebhookSchedulingProps(props);
+            return {
+                ...schedulingProps,
+                ownerKey: schedulingProps.ownerKey ?? ''
+            };
+        });
+
+        const res = await this.routeFetch(postImmediateBatchRoute)({ body: { tasks: entries } });
+
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || 'Error scheduling immediate batch',
+                payload: { response: res.error.payload as any }
+            });
+        }
+
+        return Ok(
+            res.results.map<ExecuteWebhookBatchEntryResult>((entry) => {
+                if ('error' in entry) {
+                    return Err({
+                        name: entry.error.code,
+                        message: entry.error.message,
+                        payload: {}
+                    });
+                }
+                return Ok({ taskId: entry.taskId, retryKey: entry.retryKey });
+            })
+        );
+    }
+
+    public async executeOnEvent(props: ExecuteOnEventProps & { async: boolean }): Promise<VoidReturn> {
+        const { args, async, ...rest } = props;
+        const schedulingProps: ImmediateProps = {
+            retry: { count: 0, max: 0 },
+            timeoutSettingsInSecs: {
+                createdToStarted: 30,
+                startedToCompleted: 5 * 60,
+                heartbeat: 99999
+            },
+            ...rest,
+            args: {
+                ...args,
+                type: 'on-event' as const
+            }
+        };
+
+        const res: Result<any, ClientError> = async ? await this.immediate(schedulingProps) : await this.immediateAndWait(schedulingProps);
+        if (res.isErr()) {
+            return Err(res.error);
+        }
+        return Ok(undefined);
+    }
+
+    public async getOutput({ retryKey, ownerKey }: { retryKey: string; ownerKey: string }): Promise<ExecuteReturn> {
+        const res = await this.routeFetch(getRetryOutputRoute)({
+            query: { ownerKey },
+            params: { retryKey }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error fetching retry '${retryKey}' output`,
+                payload: { retryKey, ownerKey, response: res.error.payload as any }
+            });
+        }
+        if (res.state === 'no_tasks' || res.state === 'in_progress') {
+            return Ok(null);
+        }
+        if (res.state !== 'SUCCEEDED') {
+            return Err({
+                name: 'all_retries_failed',
+                message: `All retries failed: ${retryKey}`,
+                payload: res.output
+            });
+        }
+        return Ok(res.output);
+    }
+
+    public async searchTasks({
+        ids,
+        groupKey,
+        limit
+    }: {
+        ids?: string[];
+        groupKey?: string;
+        limit?: number;
+    }): Promise<Result<OrchestratorTask[], ClientError>> {
+        const body = {
+            ...(ids ? { ids } : {}),
+            ...(groupKey ? { groupKey } : {}),
+            ...(limit ? { limit } : {})
+        };
+        const res = await this.routeFetch(postTasksSearchRoute)({ body });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error listing tasks`,
+                payload: { ...body, response: res.error.payload as any }
+            });
+        } else {
+            const tasks = res.flatMap((task) => {
+                const validated = validateTask(task);
+                if (validated.isErr()) {
+                    logger.error(`Search: error validating task: ${validated.error.message}`);
+                    return [];
+                }
+                return [validated.value];
+            });
+            return Ok(tasks);
+        }
+    }
+
+    public async searchSchedules({ scheduleNames, limit }: { scheduleNames: string[]; limit: number }): Promise<SchedulesReturn> {
+        const res = await this.routeFetch(postSchedulesSearchRoute)({
+            body: { names: scheduleNames, limit }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error listing schedules`,
+                payload: { scheduleNames, response: res.error.payload as any }
+            });
+        } else {
+            const schedules = res.flatMap((schedule) => {
+                const validated = validateSchedule(schedule);
+                if (validated.isErr()) {
+                    logger.error(`search: error validating schedule: ${validated.error.message}`);
+                    return [];
+                }
+                return [validated.value];
+            });
+            return Ok(schedules);
+        }
+    }
+
+    public async dequeue({
+        groupKeyPattern,
+        limit,
+        longPolling
+    }: {
+        groupKeyPattern: string;
+        limit: number;
+        longPolling: boolean;
+    }): Promise<Result<OrchestratorTask[], ClientError>> {
+        const res = await this.routeFetch(postDequeueRoute)({
+            body: {
+                groupKeyPattern,
+                limit,
+                longPolling
+            }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error dequeueing tasks`,
+                payload: { groupKeyPattern, limit, response: res.error.payload as any }
+            });
+        } else {
+            const dequeuedTasks = res.flatMap((task) => {
+                const validated = validateTask(task);
+                if (validated.isErr()) {
+                    logger.error(`Dequeue: error validating task: ${validated.error.message}`);
+                    return [];
+                }
+                return [validated.value];
+            });
+            return Ok(dequeuedTasks);
+        }
+    }
+
+    public async heartbeat({ taskId }: { taskId: string }): Promise<Result<void, ClientError>> {
+        const res = await this.routeFetch(postHeartbeatRoute)({
+            params: { taskId }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error heartbeating task '${taskId}'`,
+                payload: { taskId, response: res.error.payload as any }
+            });
+        } else {
+            return Ok(undefined);
+        }
+    }
+
+    public async succeed({
+        taskId,
+        output,
+        nextExecutionInMs
+    }: {
+        taskId: string;
+        output: JsonValue;
+        nextExecutionInMs?: number | undefined;
+    }): Promise<Result<OrchestratorTask, ClientError>> {
+        const res = await this.routeFetch(putTaskRoute)({
+            params: { taskId },
+            body: { output, state: 'SUCCEEDED', nextExecutionInMs }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error succeeding task '${taskId}'`,
+                payload: { taskId, output, response: res.error.payload as any }
+            });
+        } else {
+            return validateTask(res).mapError((err) => ({
+                name: 'succeed_failed',
+                message: `Failed to mark task ${taskId} as succeeded`,
+                payload: { taskId, output, err: err as any }
+            }));
+        }
+    }
+
+    public async failed({
+        taskId,
+        error,
+        nextExecutionInMs
+    }: {
+        taskId: string;
+        error: Error;
+        nextExecutionInMs?: number | undefined;
+    }): Promise<Result<OrchestratorTask, ClientError>> {
+        const output = {
+            name: error.name,
+            type: 'type' in error ? (error.type as string) : 'unknown_error',
+            message: error.message,
+            payload: 'payload' in error ? (error.payload as any) : null,
+            additional_properties: 'additional_properties' in error ? (error.additional_properties as any) : null
+        };
+        const res = await this.routeFetch(putTaskRoute)({
+            params: { taskId },
+            body: { output, state: 'FAILED', nextExecutionInMs }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error failing task '${taskId}'`,
+                payload: { taskId, error: output, response: res.error.payload as any }
+            });
+        } else {
+            return validateTask(res).mapError((err) => ({
+                name: 'failed_failed',
+                message: `Failed to mark task ${taskId} as failed`,
+                payload: { taskId, error: output, err: err as any }
+            }));
+        }
+    }
+
+    public async cancel({
+        taskId,
+        reason,
+        nextExecutionInMs
+    }: {
+        taskId: string;
+        reason: string;
+        nextExecutionInMs?: number;
+    }): Promise<Result<OrchestratorTask, ClientError>> {
+        const res = await this.routeFetch(putTaskRoute)({
+            params: { taskId },
+            body: { output: reason, state: 'CANCELLED', nextExecutionInMs }
+        });
+        if ('error' in res) {
+            return Err({
+                name: res.error.code,
+                message: res.error.message || `Error cancelling task '${taskId}'`,
+                payload: { taskId, error: reason, response: res.error.payload as any }
+            });
+        } else {
+            return validateTask(res).mapError((err) => ({
+                name: 'cancel_failed',
+                message: `Failed to mark task ${taskId} as cancelled`,
+                payload: { taskId, error: reason, err: err as any }
+            }));
+        }
+    }
+}
+
+function getErrorMessageForCode(payload: unknown, code: string): string | null {
+    if (!payload || typeof payload !== 'object' || !('error' in payload)) {
+        return null;
+    }
+
+    const response = payload as {
+        error?: {
+            code?: string;
+            message?: string;
+        };
+    };
+
+    if (response.error?.code !== code) {
+        return null;
+    }
+
+    return response.error.message || '';
+}
+
+export function isDuplicateTaskNameClientError(err: unknown): boolean {
+    if (!err || typeof err !== 'object') {
+        return false;
+    }
+
+    const error = err as { name?: string };
+    return error.name === 'duplicate_task_name';
+}
+
+export type ExecuteWebhookBatchEntryResult = Result<{ taskId: string; retryKey: string }, ClientError>;

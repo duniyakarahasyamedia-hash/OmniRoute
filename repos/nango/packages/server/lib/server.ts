@@ -1,0 +1,160 @@
+import './tracer.js';
+import './utils/loadEnv.js';
+
+import http from 'node:http';
+
+import express from 'express';
+import * as cron from 'node-cron';
+import qs from 'qs';
+import { WebSocketServer } from 'ws';
+
+import { billing } from '@nangohq/billing';
+import db, { KnexDatabase } from '@nangohq/database';
+import { destroy as destroyFeatureFlags, initialize as initializeFeatureFlags } from '@nangohq/feature-flags';
+import { migrate as migrateKeystore } from '@nangohq/keystore';
+import { destroy as destroyKvstore } from '@nangohq/kvstore';
+import { destroy as destroyLogs, start as migrateLogs, otlp } from '@nangohq/logs';
+import { records } from '@nangohq/records';
+import { getGlobalOAuthCallbackUrl, getOtlpRoutes, getProviders, getServerPort, getWebsocketsPath, pubsub } from '@nangohq/shared';
+import { flags, getLogger, NANGO_VERSION, once, report } from '@nangohq/utils';
+
+import publisher from './clients/publisher.client.js';
+import { deleteOldData } from './crons/deleteOldData.js';
+import { lambdaKeepWarmCron } from './crons/lambdaKeepWarm.js';
+import { refreshConnectionsCron } from './crons/refreshConnections.js';
+import { timeoutFunctionAsyncJobsCron } from './crons/timeoutFunctionAsyncJobs.js';
+import { timeoutLogsOperations } from './crons/timeoutLogsOperations.js';
+import { trialCron } from './crons/trial.js';
+import { envs } from './env.js';
+import { migrateFleets, stopFleets } from './fleet.js';
+import { beginShutdown } from './ready.js';
+import { router } from './routes.js';
+import { tasks } from './tasks/index.js';
+import { egressTelemetryRecorder } from './utils/egressTelemetry.js';
+import migrate from './utils/migrate.js';
+
+import type { WebSocket } from 'ws';
+
+const { NANGO_MIGRATE_AT_START = 'true' } = process.env;
+const logger = getLogger('Server');
+
+process.on('unhandledRejection', (reason) => {
+    logger.error('Received unhandledRejection...', reason);
+    report(reason);
+    // not closing on purpose
+});
+
+process.on('uncaughtException', (err) => {
+    logger.error('Received uncaughtException...', err);
+    report(err);
+    // not closing on purpose
+});
+
+const app = express();
+
+app.set('query parser', (str: string) => {
+    return qs.parse(str, { arrayLimit: 100 });
+});
+
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+// Load all routes
+app.use('/', router);
+
+const server = http.createServer(app);
+
+server.keepAliveTimeout = envs.NANGO_SERVER_KEEP_ALIVE_TIMEOUT;
+server.headersTimeout = envs.NANGO_SERVER_KEEP_ALIVE_TIMEOUT + 1000; //needs to be longer than the keep alive timeout to avoid premature disconnections
+// -------
+// Websocket
+const wss = new WebSocketServer({ server, path: getWebsocketsPath() });
+
+wss.on('connection', async (ws: WebSocket) => {
+    await publisher.subscribe(ws);
+});
+
+// Set to 'false' to disable migration at startup. Appropriate when you
+// have multiple replicas of the service running and you do not want them
+// all trying to migrate the database at the same time. In this case, the
+// operator should run migrate.ts once before starting the service.
+if (NANGO_MIGRATE_AT_START === 'true') {
+    const db = new KnexDatabase({ timeoutMs: 0 }); // Disable timeout for migrations
+    await migrate(db);
+    await migrateKeystore(db.knex);
+    await migrateLogs();
+    await records.migrate();
+    await migrateFleets();
+    await tasks.migrate();
+    await db.destroy();
+} else {
+    logger.info('Not migrating database');
+}
+
+// Preload providers
+getProviders();
+
+refreshConnectionsCron();
+timeoutLogsOperations();
+timeoutFunctionAsyncJobsCron();
+deleteOldData();
+trialCron();
+lambdaKeepWarmCron();
+tasks.start();
+void otlp.register(getOtlpRoutes);
+
+const pubsubConnect = await pubsub.connect();
+if (pubsubConnect.isErr()) {
+    logger.error(`PubSub: Failed to connect to transport: ${pubsubConnect.error.message}`);
+}
+
+await initializeFeatureFlags();
+
+const port = getServerPort();
+server.listen(port, () => {
+    logger.info(`✅ Nango Server with version ${NANGO_VERSION} is listening on port ${port}. OAuth callback URL: ${getGlobalOAuthCallbackUrl()}`);
+    logger.info(`Role-based authorization: ${flags.hasAuthRoles ? 'enabled' : 'disabled'}`);
+    logger.info(
+        `\n   |     |     |     |     |     |     |\n   |     |     |     |     |     |     |\n   |     |     |     |     |     |     |  \n \\ | / \\ | / \\ | / \\ | / \\ | / \\ | / \\ | /\n  \\|/   \\|/   \\|/   \\|/   \\|/   \\|/   \\|/\n------------------------------------------\nLaunch Nango at http://localhost:${port}\n------------------------------------------\n  /|\\   /|\\   /|\\   /|\\   /|\\   /|\\   /|\\\n / | \\ / | \\ / | \\ / | \\ / | \\ / | \\ / | \\\n   |     |     |     |     |     |     |\n   |     |     |     |     |     |     |\n   |     |     |     |     |     |     |`
+    );
+});
+
+// --- Close function
+const close = once(() => {
+    logger.info('Closing...');
+
+    cron.getTasks().forEach((task) => task.stop());
+
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    server.close(async () => {
+        wss.close();
+        await stopFleets();
+        await tasks.stop();
+        await db.destroy();
+        await records.close();
+        await destroyLogs();
+        otlp.stop();
+        await destroyKvstore();
+        await destroyFeatureFlags();
+        await billing.shutdown();
+        await egressTelemetryRecorder.shutdown();
+        await pubsub.disconnect();
+
+        logger.close();
+
+        console.info('Closed');
+
+        process.exit();
+    });
+});
+
+process.on('SIGINT', () => {
+    logger.info('Received SIGINT...');
+    close();
+});
+
+process.on('SIGTERM', () => {
+    logger.info('Received SIGTERM...');
+    beginShutdown();
+    setTimeout(close, envs.SERVER_SHUTDOWN_DELAY_MS);
+});

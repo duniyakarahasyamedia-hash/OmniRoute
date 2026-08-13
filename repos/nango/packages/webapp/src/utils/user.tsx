@@ -1,0 +1,49 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useSWRConfig } from 'swr';
+
+import { useLogoutAPI } from '../hooks/useAuth';
+import { resetPlayground } from '../store/playground';
+import storage, { LocalStorageKeys } from '../utils/local-storage';
+import { useAnalyticsIdentify, useAnalyticsReset } from './analytics';
+
+import type { ApiUser } from '@nangohq/types';
+
+export function useSignin() {
+    const analyticsIdentify = useAnalyticsIdentify();
+
+    return (user: ApiUser) => {
+        storage.setItem(LocalStorageKeys.UserEmail, user.email);
+        storage.setItem(LocalStorageKeys.UserName, user.name);
+        storage.setItem(LocalStorageKeys.UserId, user.id);
+        storage.setItem(LocalStorageKeys.AccountId, user.accountId);
+
+        analyticsIdentify(user);
+    };
+}
+
+export function useSignout() {
+    const analyticsReset = useAnalyticsReset();
+    const { mutate, cache } = useSWRConfig();
+    const queryClient = useQueryClient();
+    const { mutateAsync: logoutAPI } = useLogoutAPI();
+
+    return async () => {
+        storage.clearSession();
+        resetPlayground(); // playground selections belong to the session's account/env
+        analyticsReset();
+        await logoutAPI(); // Destroy server session.
+
+        await mutate(() => true, undefined, { revalidate: false }); // clean all cache
+        await queryClient.cancelQueries();
+        queryClient.clear();
+
+        // swr/infinite doesn't currently support clearing cache keys with the
+        // default mechanism. see https://github.com/vercel/swr/issues/2497
+        for (const key of cache.keys()) {
+            await mutate(key, undefined, { revalidate: false });
+        }
+
+        // force a full reload to ensure all state is cleared
+        window.location.href = '/signin';
+    };
+}

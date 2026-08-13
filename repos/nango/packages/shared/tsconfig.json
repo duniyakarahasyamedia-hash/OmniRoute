@@ -1,0 +1,49 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "lib",
+        "outDir": "dist"
+    },
+    "references": [
+        {
+            "path": "../database"
+        },
+        {
+            "path": "../egress"
+        },
+        {
+            "path": "../feature-flags"
+        },
+        {
+            "path": "../kms"
+        },
+        {
+            "path": "../kvstore"
+        },
+        {
+            "path": "../logs"
+        },
+        {
+            "path": "../nango-yaml"
+        },
+        {
+            "path": "../orchestrator"
+        },
+        {
+            "path": "../providers"
+        },
+        {
+            "path": "../pubsub"
+        },
+        {
+            "path": "../records"
+        },
+        {
+            "path": "../types"
+        },
+        {
+            "path": "../utils"
+        }
+    ],
+    "include": ["lib/**/*", "../utils/lib/vitest.d.ts"]
+}

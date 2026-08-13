@@ -1,0 +1,236 @@
+import * as uuid from 'uuid';
+
+import db from '@nangohq/database';
+import { ENVS, Err, normalizeEmail, Ok, parseEnvs } from '@nangohq/utils';
+
+import type { DBUser } from '@nangohq/types';
+import type { Result } from '@nangohq/utils';
+import type { Knex } from 'knex';
+
+const VERIFICATION_EMAIL_EXPIRATION = 3 * 24 * 60 * 60 * 1000;
+const envs = parseEnvs(ENVS);
+
+class UserService {
+    async getUserById(id: number, includeSuspended = false): Promise<DBUser | null> {
+        const result = await db.knex
+            .select<DBUser>('*')
+            .from<DBUser>(`_nango_users`)
+            .where({ id })
+            .andWhere(includeSuspended ? {} : { suspended: false })
+            .first();
+
+        return result || null;
+    }
+
+    async getUserByIdAndAccountId(id: number, accountId: number, includeSuspended = false): Promise<DBUser | null> {
+        const result = await db.knex
+            .select<DBUser>('*')
+            .from<DBUser>(`_nango_users`)
+            .where({ id, account_id: accountId })
+            .andWhere(includeSuspended ? {} : { suspended: false })
+            .first();
+
+        return result || null;
+    }
+
+    async getUserByUuid(uuid: string): Promise<DBUser | null> {
+        const result = await db.knex.select('*').from<DBUser>(`_nango_users`).where({ uuid }).first();
+
+        return result || null;
+    }
+
+    async getUserByToken(token: string): Promise<Result<DBUser>> {
+        const result = await db.knex.select<DBUser>('_nango_users.*').from<DBUser>(`_nango_users`).where({ email_verification_token: token }).first();
+
+        if (result) {
+            const expired = result.email_verification_token_expires_at
+                ? new Date(result.email_verification_token_expires_at).getTime() < new Date().getTime()
+                : false;
+            if (expired) {
+                return Err(new Error('token_expired'));
+            }
+            return Ok(result);
+        }
+
+        return Err(new Error('user_not_found'));
+    }
+
+    async refreshEmailVerificationToken(expiredToken: string): Promise<DBUser | null> {
+        const newToken = uuid.v4();
+        const expires_at = new Date(new Date().getTime() + VERIFICATION_EMAIL_EXPIRATION);
+
+        const result = await db.knex
+            .from<DBUser>(`_nango_users`)
+            .where({ email_verification_token: expiredToken })
+            .update({
+                email_verification_token: newToken,
+                email_verification_token_expires_at: expires_at
+            })
+            .returning('*');
+
+        return result[0] || null;
+    }
+
+    async getUsersByAccountId(accountId: number): Promise<DBUser[]> {
+        const result = await db.knex.select('*').from<DBUser>(`_nango_users`).where({ account_id: accountId, suspended: false });
+
+        return result;
+    }
+
+    async getVerifiedActiveAdministratorsByAccountId(accountId: number): Promise<DBUser[]> {
+        return db.knex.select('*').from<DBUser>('_nango_users').where({ account_id: accountId, suspended: false, email_verified: true, role: 'administrator' });
+    }
+
+    async markAccountInvitationRequestSent(userId: number): Promise<Date | null> {
+        const [user] = await db
+            .knex<DBUser>('_nango_users')
+            .where({ id: userId })
+            .whereNull('account_invitation_requested_at')
+            .update({ account_invitation_requested_at: new Date(), updated_at: new Date() })
+            .returning('account_invitation_requested_at');
+
+        return user?.account_invitation_requested_at ?? null;
+    }
+
+    async unmarkAccountInvitationRequest(userId: number, requestedAt: Date): Promise<boolean> {
+        const updated = await db
+            .knex<DBUser>('_nango_users')
+            .where({ id: userId, account_invitation_requested_at: requestedAt })
+            .update({ account_invitation_requested_at: null, updated_at: new Date() });
+
+        return updated === 1;
+    }
+
+    async countUsers(accountId: number): Promise<number> {
+        const result = await db.knex
+            .select(db.knex.raw('COUNT(id) as total'))
+            .from<DBUser>(`_nango_users`)
+            .where({ account_id: accountId, suspended: false })
+            .first();
+
+        return result.total ? parseInt(result.total, 10) : 0;
+    }
+
+    async getAnUserByAccountId(accountId: number): Promise<DBUser | null> {
+        const result = await db.knex
+            .select('*')
+            .from<DBUser>(`_nango_users`)
+            .where({
+                account_id: accountId,
+                suspended: false
+            })
+            .orderBy('id', 'asc')
+            .limit(1);
+
+        if (result == null || result.length == 0 || result[0] == null) {
+            return null;
+        }
+
+        return result[0];
+    }
+
+    async getUserByEmail(email: string): Promise<DBUser | null> {
+        const result = await db.knex
+            .select('*')
+            .from<DBUser>(`_nango_users`)
+            .whereRaw('lower(email) = ?', [normalizeEmail(email)])
+            .first();
+
+        return result || null;
+    }
+
+    async getUserByResetPasswordToken(link: string): Promise<DBUser | null> {
+        const result = await db.knex.select('*').from<DBUser>(`_nango_users`).where({ reset_password_token: link }).first();
+
+        return result || null;
+    }
+
+    async createUser({
+        email,
+        name,
+        hashed_password = '',
+        salt = '',
+        account_id,
+        email_verified,
+        account_discovery_pending = false,
+        role = envs.DEFAULT_USER_ROLE
+    }: {
+        email: string;
+        name: string;
+        hashed_password?: string;
+        salt?: string;
+        account_id: number;
+        email_verified: boolean;
+        account_discovery_pending?: boolean;
+        role?: DBUser['role'];
+    }): Promise<DBUser | null> {
+        const expires_at = new Date(new Date().getTime() + VERIFICATION_EMAIL_EXPIRATION);
+        const result: Pick<DBUser, 'id'>[] = await db.knex
+            .from<DBUser>('_nango_users')
+            .insert({
+                email: normalizeEmail(email),
+                name,
+                hashed_password,
+                salt,
+                account_id,
+                email_verified,
+                email_verification_token: email_verified ? null : uuid.v4(),
+                email_verification_token_expires_at: email_verified ? null : expires_at,
+                account_discovery_pending,
+                role
+            })
+            .returning('id');
+
+        if (result.length === 1 && result[0]?.id) {
+            const userId = result[0].id;
+            return this.getUserById(userId);
+        }
+
+        return null;
+    }
+
+    async editUserPassword(user: Pick<DBUser, 'id' | 'reset_password_token' | 'hashed_password'>, trx: Knex = db.knex) {
+        return trx.from<DBUser>(`_nango_users`).where({ id: user.id }).update({
+            reset_password_token: user.reset_password_token,
+            hashed_password: user.hashed_password
+        });
+    }
+
+    async suspendUser(id: number) {
+        if (id !== null && id !== undefined) {
+            await db.knex.from<DBUser>(`_nango_users`).where({ id }).update({ suspended: true, suspended_at: new Date() });
+        }
+    }
+
+    async verifyUserEmail(id: number, { markAccountDiscoveryPending = false }: { markAccountDiscoveryPending?: boolean } = {}) {
+        return db.knex
+            .from<DBUser>(`_nango_users`)
+            .where({ id })
+            .update({
+                email_verified: true,
+                email_verification_token: null,
+                ...(markAccountDiscoveryPending && { account_discovery_pending: true })
+            });
+    }
+
+    async consumeAccountDiscoveryPendingMarker(id: number): Promise<boolean> {
+        const updated = await db.knex
+            .from<DBUser>(`_nango_users`)
+            .where({ id, account_discovery_pending: true })
+            .update({ account_discovery_pending: false, updated_at: new Date() })
+            .returning('id');
+
+        return updated.length === 1;
+    }
+
+    async update({ id, ...data }: { id: number } & Omit<Partial<DBUser>, 'id'>, trx: Knex = db.knex): Promise<DBUser | null> {
+        const [up] = await trx
+            .from<DBUser>(`_nango_users`)
+            .update({ ...data, updated_at: new Date() })
+            .where({ id })
+            .returning('*');
+        return up || null;
+    }
+}
+
+export default new UserService();

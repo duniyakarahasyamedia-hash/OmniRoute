@@ -1,0 +1,483 @@
+import db, { dbNamespace } from '@nangohq/database';
+import { nangoConfigFile } from '@nangohq/nango-yaml';
+import { env, filterJsonSchemaForModels, metrics } from '@nangohq/utils';
+
+import { envs } from '../../../env.js';
+import { NangoError } from '../../../utils/error.js';
+import { resolveLocalFileName } from '../../../utils/utils.js';
+import configService from '../../config.service.js';
+import { switchActiveSyncConfig } from '../../deploy/utils.js';
+import remoteFileService from '../../file/remote.service.js';
+import { onEventScriptService } from '../../on-event-scripts.service.js';
+import { getSyncsByProviderConfigKey } from '../sync.service.js';
+import { getSyncAndActionConfigByParams, increment } from './config.service.js';
+import { scanCompiledDeployScript } from './deployScriptSecurityScan.js';
+
+import type { Orchestrator } from '../../../clients/orchestrator.js';
+import type { ServiceResponse } from '../../../models/Generic.js';
+import type { Config as ProviderConfig } from '../../../models/Provider.js';
+import type { LogContext, LogContextGetter } from '@nangohq/logs';
+import type {
+    CleanedIncomingFlowConfig,
+    CLIDeployFlowConfig,
+    DBEnvironment,
+    DBSyncConfig,
+    DBSyncConfigInsert,
+    DBSyncEndpoint,
+    DBSyncEndpointCreate,
+    DBTeam,
+    FunctionSource,
+    HTTP_METHOD,
+    NangoSyncEndpointV2,
+    OnEventScriptsByProvider,
+    SyncDeploymentResult
+} from '@nangohq/types';
+import type { JSONSchema7 } from 'json-schema';
+
+const TABLE = dbNamespace + 'sync_configs';
+const ENDPOINT_TABLE = dbNamespace + 'sync_endpoints';
+
+const nameOfType = 'sync/action';
+
+type FlowParsed = CleanedIncomingFlowConfig;
+type FlowWithoutScript = Omit<FlowParsed, 'fileBody'>;
+type CompiledDeployInfo = { idsToMarkAsInactive: number[]; syncConfig: DBSyncConfigInsert };
+
+interface SyncConfigResult {
+    result: SyncDeploymentResult[];
+    logCtx: LogContext;
+}
+
+/**
+ * Transform received incoming flow from the CLI to an internally standard object
+ */
+export function cleanIncomingFlow(flowConfigs: CLIDeployFlowConfig[]): CleanedIncomingFlowConfig[] {
+    const cleaned: CleanedIncomingFlowConfig[] = [];
+    for (const flow of flowConfigs) {
+        const parsedEndpoints = flow.endpoints
+            ? flow.endpoints.map<NangoSyncEndpointV2>((endpoint) => {
+                  if ('path' in endpoint) {
+                      return endpoint;
+                  }
+                  const entries = Object.entries(endpoint) as [HTTP_METHOD, string][];
+                  return { method: entries[0]![0], path: entries[0]![1] };
+              })
+            : [];
+        cleaned.push({ ...flow, endpoints: parsedEndpoints });
+    }
+    return cleaned;
+}
+
+export async function deploy({
+    environment,
+    account,
+    flows,
+    aggregatedJsonSchema,
+    onEventScriptsByProvider,
+    nangoYamlBody,
+    logContextGetter,
+    orchestrator,
+    debug,
+    sdkVersion,
+    source
+}: {
+    environment: DBEnvironment;
+    account: DBTeam;
+    flows: CleanedIncomingFlowConfig[];
+    /** @deprecated */
+    aggregatedJsonSchema?: JSONSchema7 | undefined;
+    onEventScriptsByProvider?: OnEventScriptsByProvider[] | undefined;
+    nangoYamlBody: string;
+    logContextGetter: LogContextGetter;
+    orchestrator: Orchestrator;
+    debug?: boolean;
+    sdkVersion: string | undefined;
+    source: FunctionSource;
+}): Promise<ServiceResponse<SyncConfigResult | null>> {
+    const logCtx = await logContextGetter.create({ operation: { type: 'deploy', action: 'custom' } }, { account, environment });
+
+    if (nangoYamlBody) {
+        await remoteFileService.upload({
+            content: nangoYamlBody,
+            destinationPath: `${env}/account/${account.id}/environment/${environment.id}/${nangoConfigFile}`,
+            destinationLocalFileName: nangoConfigFile
+        });
+    }
+
+    const deployResults: SyncDeploymentResult[] = [];
+    const flowsWithoutScript: FlowWithoutScript[] = [];
+    const idsToMarkAsInactive: number[] = [];
+    const syncConfigs: DBSyncConfigInsert[] = [];
+
+    const providerConfigsByKey = new Map<string, ProviderConfig>();
+    if (flows.length > 0) {
+        const providerConfigs = await configService.listProviderConfigs(db.readOnly, environment.id);
+        for (const providerConfig of providerConfigs) {
+            providerConfigsByKey.set(providerConfig.unique_key, providerConfig);
+        }
+    }
+
+    for (let i = 0; i < flows.length; i += envs.DEPLOY_BATCH_SIZE) {
+        const batch = flows.slice(i, i + envs.DEPLOY_BATCH_SIZE);
+        const batchResults = await Promise.all(
+            batch.map((flow) => {
+                const providerConfig = providerConfigsByKey.get(flow.providerConfigKey);
+                if (!providerConfig) {
+                    const error = new NangoError('unknown_provider_config', { providerConfigKey: flow.providerConfigKey });
+                    void logCtx.error(error.message);
+                    return Promise.resolve<ServiceResponse<CompiledDeployInfo>>({ success: false, error, response: null });
+                }
+
+                return compileDeployInfo({
+                    flow,
+                    providerConfig,
+                    aggregatedJsonSchema,
+                    env,
+                    environment_id: environment.id,
+                    account,
+                    debug: Boolean(debug),
+                    logCtx,
+                    orchestrator,
+                    sdkVersion,
+                    source
+                });
+            })
+        );
+
+        for (const [batchIndex, flow] of batch.entries()) {
+            const { fileBody: _fileBody, ...rest } = flow;
+            flowsWithoutScript.push({ ...rest });
+
+            const { success, error, response } = batchResults[batchIndex]!;
+
+            if (!success || !response) {
+                void logCtx.error(`Failed to deploy script "${flow.syncName}"`, { error });
+                await logCtx.failed();
+                return { success, error, response: null };
+            }
+
+            idsToMarkAsInactive.push(...response.idsToMarkAsInactive);
+            syncConfigs.push(response.syncConfig);
+            const deployResult: SyncDeploymentResult = {
+                name: flow.syncName,
+                models: flow.models,
+                version: response.syncConfig.version,
+                providerConfigKey: flow.providerConfigKey,
+                type: flow.type
+            };
+
+            if (response.syncConfig.version) {
+                deployResult.version = response.syncConfig.version;
+            }
+
+            deployResults.push(deployResult);
+        }
+    }
+
+    if (syncConfigs.length === 0) {
+        if (debug) {
+            void logCtx.debug('All syncs were deleted');
+        }
+        await logCtx.success();
+
+        return { success: true, error: null, response: { result: [], logCtx } };
+    }
+
+    const flowNames = flows.map((flow) => flow.syncName);
+
+    try {
+        await db.knex.transaction(async (trx) => {
+            if (idsToMarkAsInactive.length > 0) {
+                await trx.from<DBSyncConfig>(TABLE).update({ active: false }).whereIn('id', idsToMarkAsInactive);
+            }
+
+            const flowIds = await trx.from<DBSyncConfig>(TABLE).insert(syncConfigs).returning('id');
+
+            const endpoints: DBSyncEndpointCreate[] = [];
+            for (const [index, row] of flowIds.entries()) {
+                const flow = flows[index];
+                if (!flow) {
+                    continue;
+                }
+
+                endpoints.push(...endpointToSyncEndpoint(flow, row.id));
+            }
+
+            if (endpoints.length > 0) {
+                await trx.from<DBSyncEndpoint>(ENDPOINT_TABLE).insert(endpoints);
+            }
+
+            // Use the switchActiveSyncConfig function for each inactive config
+            for (const id of idsToMarkAsInactive) {
+                await switchActiveSyncConfig(id, trx);
+            }
+
+            // Update on-event scripts within the same transaction
+            if (onEventScriptsByProvider) {
+                const updated = await onEventScriptService.update({ environment, account, onEventScriptsByProvider, sdkVersion });
+                const result: SyncDeploymentResult[] = updated.map((u) => {
+                    return {
+                        name: u.name,
+                        version: u.version,
+                        providerConfigKey: u.providerConfigKey,
+                        type: 'on-event',
+                        models: []
+                    };
+                });
+                deployResults.push(...result);
+            }
+        });
+
+        void logCtx.info(`Successfully deployed ${flows.length} script${flows.length > 1 ? 's' : ''}`, {
+            nameOfType,
+            count: flows.length,
+            syncNames: flowNames,
+            flows: flowsWithoutScript
+        });
+        await logCtx.success();
+
+        return { success: true, error: null, response: { result: deployResults, logCtx } };
+    } catch (err) {
+        void logCtx.error('Failed to deploy scripts', { error: err });
+        await logCtx.failed();
+
+        throw new NangoError('error_creating_sync_config');
+    }
+}
+
+async function compileDeployInfo({
+    flow,
+    providerConfig,
+    aggregatedJsonSchema,
+    env,
+    environment_id,
+    account,
+    debug,
+    logCtx,
+    orchestrator,
+    sdkVersion,
+    source
+}: {
+    flow: FlowParsed;
+    providerConfig: ProviderConfig;
+    /** @deprecated */
+    aggregatedJsonSchema?: JSONSchema7 | undefined;
+    env: string;
+    environment_id: number;
+    account: DBTeam;
+    debug: boolean;
+    logCtx: LogContext;
+    orchestrator: Orchestrator;
+    sdkVersion: string | undefined;
+    source: FunctionSource;
+}): Promise<ServiceResponse<CompiledDeployInfo>> {
+    const {
+        syncName,
+        providerConfigKey,
+        fileBody,
+        models,
+        runs,
+        version: userSpecifiedVersion, // From CLI param or specified in function.ts file
+        type = 'sync',
+        track_deletes,
+        auto_start,
+        attributes = {},
+        metadata = {}
+    } = flow;
+
+    const previousSyncAndActionConfig = await getSyncAndActionConfigByParams(environment_id, syncName, providerConfig, source);
+    let bumpedVersion = '';
+
+    if (previousSyncAndActionConfig) {
+        if (!userSpecifiedVersion) {
+            bumpedVersion = increment(previousSyncAndActionConfig.version as string | number).toString();
+        }
+
+        if (debug) {
+            void logCtx.debug('A previous sync config was found', { syncName, prevVersion: previousSyncAndActionConfig.version });
+        }
+
+        if (runs && runs !== previousSyncAndActionConfig.runs) {
+            const syncs = await getSyncsByProviderConfigKey({ environmentId: environment_id, providerConfigKey, filter: [{ syncName, syncVariant: 'base' }] });
+
+            for (const sync of syncs) {
+                const interval = sync.frequency || runs;
+                const res = await orchestrator.updateSyncFrequency({
+                    syncId: sync.id,
+                    interval,
+                    syncName,
+                    environmentId: environment_id,
+                    logCtx
+                });
+                if (res.isErr()) {
+                    const error = new NangoError('error_updating_sync_schedule_frequency', {
+                        syncId: sync.id,
+                        environmentId: environment_id,
+                        interval
+                    });
+                    return { success: false, error, response: null };
+                }
+            }
+        }
+    }
+
+    const targetVersion = userSpecifiedVersion || bumpedVersion || '1';
+
+    // intentionally not filtered by source so a disabled sync stays disabled when switching sources (e.g. catalog → repo).
+    // select all active rows, not just .first(), so any duplicates left by prior races are also cleaned up.
+    const activeConfigs = await db.knex
+        .from<DBSyncConfig>(TABLE)
+        .where({ environment_id, sync_name: syncName, nango_config_id: providerConfig.id!, type, active: true, deleted: false })
+        .select('id', 'enabled')
+        .orderBy('created_at', 'desc');
+    const idsToMarkAsInactive: number[] = activeConfigs.map((c) => c.id);
+    const lastSyncWasEnabled = activeConfigs[0]?.enabled ?? true;
+
+    const jsFile = typeof fileBody === 'string' ? fileBody : fileBody.js;
+
+    const scanResult = scanCompiledDeployScript(jsFile);
+    if (!scanResult.ok && scanResult.rule !== 'parse_error') {
+        const rule = scanResult.rule;
+        metrics.increment(metrics.Types.DEPLOY_SECURITY_SCAN, 1, {
+            result: 'rejected',
+            rule,
+            syncName,
+            providerConfigKey
+        });
+        void logCtx.error('Deploy script rejected by security scan', {
+            syncName,
+            providerConfigKey,
+            rule,
+            hitCount: scanResult.hits.length
+        });
+
+        const error = new NangoError('deploy_script_security_rejected', { syncName, providerConfigKey });
+        return { success: false, error, response: null };
+    }
+
+    const jsDestinationPath = `${env}/account/${account.id}/environment/${environment_id}/config/${providerConfig.id}/${syncName}-v${targetVersion}.js`;
+    const previousJsFileLocation = previousSyncAndActionConfig?.file_location;
+    const jsLocalFileName = resolveLocalFileName({ syncName, providerConfigKey });
+    // If no previous file location, we consider the file changed no matter what the content is.
+    // This ensures if upload succeeds, but db transaction fails, we re-upload and get a valid file_location.
+    const jsChanged = previousJsFileLocation ? await remoteFileService.checkIfChanged({ content: jsFile, objectKey: previousJsFileLocation }) : true;
+    // User can specify a new version via CLI param without changing the file content, so we need to upload if the version is different.
+    const userChangedVersion = userSpecifiedVersion && userSpecifiedVersion !== previousSyncAndActionConfig?.version;
+    const uploads = [];
+
+    let file_location: string | null | undefined = previousJsFileLocation;
+    let persistedVersion = previousSyncAndActionConfig?.version || '1';
+
+    if (typeof fileBody === 'object' && fileBody.ts) {
+        const tsFile = fileBody.ts;
+        const tsDestinationPath = `${env}/account/${account.id}/environment/${environment_id}/config/${providerConfig.id}/${syncName}.ts`;
+        const tsLocalFileName = `${providerConfigKey}/${flow.type}s/${syncName}.ts`;
+        const tsChanged = await remoteFileService.checkIfChanged({ content: fileBody.ts, objectKey: tsDestinationPath });
+
+        if (tsChanged || jsChanged || userChangedVersion) {
+            uploads.push(
+                remoteFileService.upload({
+                    content: jsFile,
+                    destinationPath: jsDestinationPath,
+                    destinationLocalFileName: jsLocalFileName
+                }),
+                remoteFileService.upload({
+                    content: tsFile,
+                    destinationPath: tsDestinationPath,
+                    destinationLocalFileName: tsLocalFileName
+                })
+            );
+        }
+    }
+    // Legacy Path - Only JS is provided
+    else {
+        if (jsChanged || userChangedVersion) {
+            uploads.push(
+                remoteFileService.upload({
+                    content: jsFile,
+                    destinationPath: jsDestinationPath,
+                    destinationLocalFileName: jsLocalFileName
+                })
+            );
+        }
+    }
+
+    if (uploads.length > 0) {
+        void logCtx.info('Uploading new files for changed function', { fileName: `${syncName}-v${targetVersion}.js` });
+        [file_location] = await Promise.all(uploads);
+        persistedVersion = targetVersion;
+    } else {
+        void logCtx.info('Function unchanged. Skipping upload', { fileName: `${syncName}-v${targetVersion}.js` });
+    }
+
+    if (!file_location) {
+        void logCtx.error('There was an error uploading the sync file', { fileName: `${syncName}-v${targetVersion}.js` });
+        return { success: false, error: new NangoError('file_upload_error'), response: null };
+    }
+
+    let models_json_schema: JSONSchema7 | null = flow.models_json_schema ?? null;
+    if (!models_json_schema && aggregatedJsonSchema) {
+        // Legacy: jsonSchema for all functions were sent at the root of the body
+        const allModels = [...models, flow.input].filter(Boolean) as string[];
+        const result = filterJsonSchemaForModels(aggregatedJsonSchema, allModels);
+        if (result.isErr()) {
+            return { success: false, error: new NangoError('deploy_missing_json_schema_model', result.error), response: null };
+        }
+        models_json_schema = result.value;
+    }
+
+    return {
+        success: true,
+        error: null,
+        response: {
+            idsToMarkAsInactive,
+            syncConfig: {
+                source,
+                environment_id,
+                nango_config_id: providerConfig.id!,
+                sync_name: syncName,
+                type,
+                models,
+                version: persistedVersion,
+                track_deletes: track_deletes || false,
+                auto_start: auto_start === false ? false : true,
+                attributes,
+                metadata,
+                file_location,
+                runs,
+                active: true,
+                input: typeof flow.input === 'string' ? flow.input : null,
+                sync_type: flow.sync_type || null,
+                webhook_subscriptions: flow.webhookSubscriptions || [],
+                enabled: lastSyncWasEnabled,
+                model_schema: null,
+                models_json_schema,
+                sdk_version: sdkVersion || null,
+                features: flow.features || [],
+                created_at: new Date(),
+                updated_at: new Date()
+            }
+        }
+    };
+}
+
+function endpointToSyncEndpoint(flow: Pick<CleanedIncomingFlowConfig, 'endpoints' | 'models'>, sync_config_id: number) {
+    const endpoints: DBSyncEndpointCreate[] = [];
+    for (const [endpointIndex, endpoint] of flow.endpoints.entries()) {
+        const res: DBSyncEndpointCreate = {
+            sync_config_id,
+            method: endpoint.method,
+            path: endpoint.path,
+            group_name: endpoint.group || null,
+            created_at: new Date(),
+            updated_at: new Date()
+        };
+        const model = flow.models[endpointIndex];
+        if (model) {
+            res.model = model;
+        }
+        endpoints.push(res);
+    }
+
+    return endpoints;
+}

@@ -1,0 +1,61 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "lib",
+        "outDir": "dist"
+    },
+    "references": [
+        {
+            "path": "../data-ingestion"
+        },
+        {
+            "path": "../database"
+        },
+        {
+            "path": "../feature-flags"
+        },
+        {
+            "path": "../fleet"
+        },
+        {
+            "path": "../kms"
+        },
+        {
+            "path": "../kvstore"
+        },
+        {
+            "path": "../logs"
+        },
+        {
+            "path": "../orchestrator"
+        },
+        {
+            "path": "../pubsub"
+        },
+        {
+            "path": "../records"
+        },
+        {
+            "path": "../runner"
+        },
+        {
+            "path": "../runner-sdk"
+        },
+        {
+            "path": "../shared"
+        },
+        {
+            "path": "../types"
+        },
+        {
+            "path": "../usage"
+        },
+        {
+            "path": "../utils"
+        },
+        {
+            "path": "../webhooks"
+        }
+    ],
+    "include": ["lib/**/*"]
+}

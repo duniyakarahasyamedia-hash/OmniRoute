@@ -1,0 +1,49 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "lib",
+        "outDir": "dist"
+    },
+    "references": [
+        {
+            "path": "../audit"
+        },
+        {
+            "path": "../billing"
+        },
+        {
+            "path": "../database"
+        },
+        {
+            "path": "../feature-flags"
+        },
+        {
+            "path": "../kms"
+        },
+        {
+            "path": "../kvstore"
+        },
+        {
+            "path": "../pubsub"
+        },
+        {
+            "path": "../records"
+        },
+        {
+            "path": "../sandbox"
+        },
+        {
+            "path": "../shared"
+        },
+        {
+            "path": "../types"
+        },
+        {
+            "path": "../usage"
+        },
+        {
+            "path": "../utils"
+        }
+    ],
+    "include": ["lib/**/*"]
+}

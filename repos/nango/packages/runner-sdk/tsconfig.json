@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "lib",
+        "outDir": "dist"
+    },
+    "include": ["lib/**/*"],
+    "references": [
+        {
+            "path": "../egress"
+        },
+        {
+            "path": "../node-client"
+        },
+        {
+            "path": "../providers"
+        },
+        {
+            "path": "../types"
+        }
+    ]
+}

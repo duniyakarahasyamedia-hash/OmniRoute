@@ -1,0 +1,35 @@
+import { FieldLabel } from '@nangohq/design-system';
+
+import { EditableInput } from '@/components/patterns/EditableInput';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+
+interface AppPrivateKeyInputProps {
+    initialValue: string;
+    onSave: (value: string) => Promise<void>;
+}
+
+export const AppPrivateKeyInput: React.FC<AppPrivateKeyInputProps> = ({ initialValue, onSave }) => {
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex gap-2 items-center">
+                <FieldLabel htmlFor="private_key">App Private Key</FieldLabel>
+                <InfoTooltip>
+                    Obtain the app private key from the app page by downloading the private key and pasting the entirety of its contents here.
+                </InfoTooltip>
+            </div>
+            <EditableInput
+                secret
+                textArea
+                initialValue={initialValue}
+                hintText='Private key must start with "-----BEGIN RSA PRIVATE KEY----" and end with "-----END RSA PRIVATE KEY-----"'
+                validate={(value) => {
+                    if (!value.trim().startsWith('-----BEGIN RSA PRIVATE KEY----') || !value.trim().endsWith('-----END RSA PRIVATE KEY-----')) {
+                        return 'Private key must start with "-----BEGIN RSA PRIVATE KEY----" and end with "-----END RSA PRIVATE KEY-----"';
+                    }
+                    return null;
+                }}
+                onSave={onSave}
+            />
+        </div>
+    );
+};
