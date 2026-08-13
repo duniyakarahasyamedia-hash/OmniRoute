@@ -1,0 +1,247 @@
+{
+  "name": "RAHASYA | 00 Infrastructure Readiness",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "f43d548a-7f54-573e-aafd-8b7762955e1a",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  to_regclass('rahasya_projects') IS NOT NULL AS projects_ready,\n  to_regclass('rahasya_events') IS NOT NULL AS events_ready,\n  to_regclass('rahasya_approvals') IS NOT NULL AS approvals_ready,\n  to_regclass('rahasya_rights_provenance') IS NOT NULL AS rights_ready,\n  to_regclass('rahasya_cost_ledger') IS NOT NULL AS costs_ready,\n  to_regclass('rahasya_analytics_snapshots') IS NOT NULL AS analytics_ready,\n  to_regclass('rahasya_growth_recommendations') IS NOT NULL AS growth_ready;",
+        "options": {
+          "queryReplacement": "={{ [] }}"
+        }
+      },
+      "id": "c40e9ca2-45e7-522f-b2b4-7c7a849b0b0a",
+      "name": "Verify PostgreSQL Schema",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [220, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "__OMNIROUTE_BASE_URL__/v1/models?configuredOnly=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "d5562339-ed43-5829-a1fe-74c4bc21357a",
+      "name": "Verify OmniRoute Gateway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "__OMNIROUTE_CREDENTIAL_ID__",
+          "name": "__OMNIROUTE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "__OMNIROUTE_BASE_URL__/v1/images/generations?configuredOnly=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "b40d1079-5ff3-5a60-877c-f9c9bf68a5cc",
+      "name": "Verify OmniRoute Image Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [660, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "__OMNIROUTE_CREDENTIAL_ID__",
+          "name": "__OMNIROUTE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "__MONEYPRINTER_BASE_URL__/api/v1/tasks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "1"
+            },
+            {
+              "name": "page_size",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "801d110c-1708-564b-bec7-0d1bfba77a84",
+      "name": "Verify MoneyPrinterTurbo API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/channels",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "id,snippet"
+            },
+            {
+              "name": "mine",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "68672353-bf45-546e-985b-82fab2c96aa2",
+      "name": "Verify YouTube OAuth Channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1100, 0],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "__YOUTUBE_CREDENTIAL_ID__",
+          "name": "__YOUTUBE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('When Executed by Another Workflow').first();\nconst schema = $('Verify PostgreSQL Schema').first().json || {};\nconst requiredTables = ['projects_ready','events_ready','approvals_ready','rights_ready','costs_ready','analytics_ready','growth_ready'];\nconst missingTables = requiredTables.filter(key => schema[key] !== true);\nif (missingTables.length) throw new Error(`PostgreSQL migration is incomplete: ${missingTables.join(', ')}`);\n\nconst omniResponse = $('Verify OmniRoute Gateway').first().json || {};\nconst omniBody = omniResponse.body ?? omniResponse;\nconst chatModels = Array.isArray(omniBody.data)\n  ? omniBody.data.filter(model => !model?.type || model.type === 'chat' || model.supported_endpoints?.includes?.('chat'))\n  : [];\nif (Number(omniResponse.statusCode || 200) !== 200 || chatModels.length < 1) {\n  throw new Error('OmniRoute has no configured chat model available');\n}\nconst expectedChatModel = '__OMNIROUTE_MODEL__';\nif (expectedChatModel.includes('/') && !chatModels.some(model => model?.id === expectedChatModel)) {\n  throw new Error('Configured OmniRoute chat model is absent from the available catalog');\n}\n\nconst imageResponse = $('Verify OmniRoute Image Models').first().json || {};\nconst imageBody = imageResponse.body ?? imageResponse;\nconst imageModels = Array.isArray(imageBody.data) ? imageBody.data : [];\nif (Number(imageResponse.statusCode || 200) !== 200 || imageModels.length < 1) {\n  throw new Error('OmniRoute has no configured image model available');\n}\nconst expectedImageModel = '__OMNIROUTE_IMAGE_MODEL__';\nif (expectedImageModel.includes('/') && !imageModels.some(model => model?.id === expectedImageModel)) {\n  throw new Error('Configured OmniRoute image model is absent from the available catalog');\n}\n\nconst renderResponse = $('Verify MoneyPrinterTurbo API').first().json || {};\nconst renderBody = renderResponse.body ?? renderResponse;\nif (Number(renderResponse.statusCode || 200) !== 200 || Number(renderBody.status) !== 200 || !Array.isArray(renderBody.data?.tasks)) {\n  throw new Error('MoneyPrinterTurbo task API readiness check failed');\n}\n\nconst channelResponse = $('Verify YouTube OAuth Channel').first().json || {};\nconst channelBody = channelResponse.body ?? channelResponse;\nconst channels = Array.isArray(channelBody.items) ? channelBody.items : [];\nconst expected = '__YOUTUBE_CHANNEL_ID__';\nif (channels.length !== 1 || channels[0]?.id !== expected) {\n  throw new Error('YouTube OAuth credential is not authorized for the configured RAHASYA channel');\n}\nreturn [{ json: original.json, ...(original.binary ? { binary: original.binary } : {}) }];"
+      },
+      "id": "15aa8c31-1eb1-53a1-8180-bf2602dd397c",
+      "name": "Enforce Infrastructure Readiness",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Verify PostgreSQL Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify PostgreSQL Schema": {
+      "main": [
+        [
+          {
+            "node": "Verify OmniRoute Gateway",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify OmniRoute Gateway": {
+      "main": [
+        [
+          {
+            "node": "Verify OmniRoute Image Models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify OmniRoute Image Models": {
+      "main": [
+        [
+          {
+            "node": "Verify MoneyPrinterTurbo API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify MoneyPrinterTurbo API": {
+      "main": [
+        [
+          {
+            "node": "Verify YouTube OAuth Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify YouTube OAuth Channel": {
+      "main": [
+        [
+          {
+            "node": "Enforce Infrastructure Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/New_York"
+  },
+  "tags": []
+}

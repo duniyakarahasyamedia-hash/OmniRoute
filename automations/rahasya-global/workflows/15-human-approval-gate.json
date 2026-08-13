@@ -1,0 +1,350 @@
+{
+  "name": "RAHASYA | 15 Human Approval Gate",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "135298aa-25b2-5c06-8748-8264632b7983",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nconst request = project?.approval_request;\nif (!project?.id || !request?.gate || !request?.summary) throw new Error('Approval request is incomplete');\nconst approvalKey = `${project.id}:${request.gate}`;\nproject.current_stage = `awaiting_${request.gate}_approval`;\nproject.status = 'awaiting_approval';\nproject.approval_request = { ...request, approval_key: approvalKey, resume_url: $execution.resumeFormUrl, requested_at: new Date().toISOString() };\nproject.approvals = project.approvals || {};\nproject.approvals[request.gate] = { decision: 'pending', requested_at: project.approval_request.requested_at };\nif (request.gate === 'disclosure_privacy') delete project.release;\nreturn [{ json: { project, replacements: [project.id, JSON.stringify(project), project.brief.topic, project.current_stage, approvalKey, request.gate, $execution.resumeFormUrl] }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "78289042-4885-5bda-9232-0f0fe4fcf030",
+      "name": "Prepare Approval Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH p AS (\n  INSERT INTO rahasya_projects(project_id, channel_key, topic, status, current_stage, project, created_at, updated_at)\n  VALUES ($1, 'rahasya-global', $3, 'awaiting_approval', $4, $2::jsonb, COALESCE(($2::jsonb->>'created_at')::timestamptz, now()), now())\n  ON CONFLICT (project_id) DO UPDATE SET status='awaiting_approval', current_stage=EXCLUDED.current_stage, project=EXCLUDED.project, updated_at=now()\n), a AS (\n  INSERT INTO rahasya_approvals(approval_key, project_id, gate, decision, resume_url, requested_at, updated_at)\n  VALUES ($5, $1, $6, 'pending', $7, now(), now())\n  ON CONFLICT (approval_key) DO UPDATE SET decision='pending', reviewer=NULL, notes=NULL, release_controls='{}'::jsonb,\n    resume_url=EXCLUDED.resume_url, requested_at=now(), decided_at=NULL, updated_at=now()\n), e AS (\n  INSERT INTO rahasya_events(event_key, project_id, event_type, stage, payload)\n  VALUES ($5 || ':requested', $1, 'approval_requested', $6, jsonb_build_object('resume_url', $7))\n  ON CONFLICT (event_key) DO NOTHING\n)\nSELECT $2::jsonb AS project;",
+        "options": {
+          "queryReplacement": "={{ $json.replacements }}"
+        }
+      },
+      "id": "c55b8e0f-f561-55bd-b728-21463fd1ef7a",
+      "name": "Persist Pending Approval",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [440, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Approval Request').first();\nreturn [{ json: { project: $json.project }, ...(prepared.binary ? { binary: prepared.binary } : {}) }];"
+      },
+      "id": "0a3b49d6-f44b-515b-b812-e723d4b83fe6",
+      "name": "Restore Pending Project",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "incomingAuthentication": "basicAuth",
+        "formTitle": "={{ 'RAHASYA Gate: ' + $json.project.approval_request.gate }}",
+        "formDescription": "={{ '<h3>Review instructions</h3><p>' + $json.project.approval_request.instructions + '</p><pre>' + $json.project.approval_request.summary.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</pre>' }}",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approved"
+                  },
+                  {
+                    "option": "Rejected"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes",
+              "fieldType": "textarea",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Privacy Status",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "private"
+                  },
+                  {
+                    "option": "unlisted"
+                  },
+                  {
+                    "option": "public"
+                  }
+                ]
+              },
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Publish At (ISO 8601, optional)",
+              "fieldType": "text",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Notify Subscribers",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "No"
+                  },
+                  {
+                    "option": "Yes"
+                  }
+                ]
+              },
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Realistic Altered or Synthetic Content",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "No"
+                  },
+                  {
+                    "option": "Yes — disclose"
+                  }
+                ]
+              },
+              "requiredField": false
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "9ba46974-1283-5043-a482-9ab63c22bfdf",
+      "name": "Wait for Authorized Review",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 0],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "__APPROVAL_BASIC_CREDENTIAL_ID__",
+          "name": "__APPROVAL_BASIC_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const before = $('Restore Pending Project').first();\nconst project = before.json.project;\nconst decision = String($json.Decision || '').toLowerCase();\nif (!['approved','rejected'].includes(decision)) throw new Error('Approval decision must be Approved or Rejected');\nconst reviewer = String($json.Reviewer || '').trim();\nif (!reviewer) throw new Error('Reviewer identity is required');\nconst gate = project.approval_request.gate;\nconst privacy = String($json['Privacy Status'] || '').toLowerCase();\nconst notify = String($json['Notify Subscribers'] || '').toLowerCase();\nconst synthetic = String($json['Realistic Altered or Synthetic Content'] || '').toLowerCase();\nconst rawPublishAt = String($json['Publish At (ISO 8601, optional)'] || '').trim();\nlet publishAt = '';\nif (gate === 'disclosure_privacy' && decision === 'approved') {\n  if (!['private','unlisted','public'].includes(privacy)) throw new Error('Final release privacy status is required');\n  if (!['yes','no'].includes(notify)) throw new Error('Final notification choice is required');\n  if (!(synthetic === 'no' || synthetic.startsWith('yes'))) throw new Error('Final synthetic-media declaration is required');\n  if (rawPublishAt) {\n    const timestamp = Date.parse(rawPublishAt);\n    if (!Number.isFinite(timestamp)) throw new Error('Publish At must be a valid ISO 8601 timestamp');\n    if (timestamp <= Date.now() + 300000) throw new Error('Scheduled publication must be at least five minutes in the future');\n    if (privacy !== 'private') throw new Error('YouTube scheduled publication requires Privacy Status = private');\n    publishAt = new Date(timestamp).toISOString();\n  }\n}\nconst controls = {\n  privacy_status: privacy,\n  publish_at: publishAt,\n  notify_subscribers: notify === 'yes',\n  synthetic_media: synthetic.startsWith('yes'),\n};\nproject.approvals = project.approvals || {};\nproject.approvals[gate] = { decision, reviewer, notes: String($json.Notes || ''), controls, decided_at: new Date().toISOString() };\nif (gate === 'disclosure_privacy' && decision === 'approved') project.release = controls;\nproject.status = decision === 'approved' ? 'in_production' : 'rejected';\nproject.current_stage = `${gate}_${decision}`;\nproject.last_event = { event_key: `${project.id}:${gate}:decision`, event_type: 'approval_decision', stage: gate, payload: { decision, reviewer } };\nreturn [{ json: { project, decision, replacements: [project.approval_request.approval_key, project.id, gate, decision, reviewer, String($json.Notes || ''), JSON.stringify(controls), project.status, JSON.stringify(project)] }, ...(before.binary ? { binary: before.binary } : {}) }];"
+      },
+      "id": "8535df0c-7890-5670-80c4-86e83aa4ea80",
+      "name": "Normalize Approval Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH a AS (\n  INSERT INTO rahasya_approvals(approval_key, project_id, gate, decision, reviewer, notes, release_controls, decided_at, updated_at)\n  VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, now(), now())\n  ON CONFLICT (approval_key) DO UPDATE SET decision=EXCLUDED.decision, reviewer=EXCLUDED.reviewer, notes=EXCLUDED.notes,\n    release_controls=EXCLUDED.release_controls, decided_at=now(), updated_at=now()\n), p AS (\n  UPDATE rahasya_projects SET status=$8, current_stage=$3, project=$9::jsonb, updated_at=now() WHERE project_id=$2\n), e AS (\n  INSERT INTO rahasya_events(event_key, project_id, event_type, stage, payload)\n  VALUES ($1 || ':decision', $2, 'approval_decision', $3, jsonb_build_object('decision',$4,'reviewer',$5,'notes',$6,'release_controls',$7::jsonb))\n  ON CONFLICT (event_key) DO NOTHING\n)\nSELECT $9::jsonb AS project;",
+        "options": {
+          "queryReplacement": "={{ $json.replacements }}"
+        }
+      },
+      "id": "0dd46cee-5d17-502d-8673-5d66b70244eb",
+      "name": "Persist Approval Decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [1320, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalized = $('Normalize Approval Decision').first();\nreturn [{ json: { project: $json.project, decision: normalized.json.decision }, ...(normalized.binary ? { binary: normalized.binary } : {}) }];"
+      },
+      "id": "a8131ca9-6695-51c3-ad49-38cd77ec8c22",
+      "name": "Restore Approval Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1115af76-19cd-51b4-ab69-8942deb830f3",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1e989bb4-499d-5d4d-b8ef-191431d8fafd",
+      "name": "Was Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ 'Production rejected at gate ' + $json.project.approval_request.gate }}"
+      },
+      "id": "fb52137a-40ab-585e-aa4b-41c6c46cfd01",
+      "name": "Stop Rejected Production",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [1980, 120]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Persist Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Restore Pending Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Pending Project": {
+      "main": [
+        [
+          {
+            "node": "Wait for Authorized Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Authorized Review": {
+      "main": [
+        [
+          {
+            "node": "Normalize Approval Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Approval Decision": {
+      "main": [
+        [
+          {
+            "node": "Persist Approval Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Approval Decision": {
+      "main": [
+        [
+          {
+            "node": "Restore Approval Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Approval Result": {
+      "main": [
+        [
+          {
+            "node": "Was Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was Approved?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Stop Rejected Production",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/New_York"
+  },
+  "tags": []
+}

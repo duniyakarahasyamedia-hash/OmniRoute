@@ -1,0 +1,101 @@
+{
+  "suite": "rahasya-global",
+  "schema_version": 1,
+  "workflows": [
+    {
+      "file": "workflows/00-infrastructure-readiness.json",
+      "name": "RAHASYA | 00 Infrastructure Readiness",
+      "activatable": false
+    },
+    {
+      "file": "workflows/01-state-cost-ledger.json",
+      "name": "RAHASYA | 01 State & Cost Ledger",
+      "activatable": false
+    },
+    {
+      "file": "workflows/02-strategy.json",
+      "name": "RAHASYA | 02 Trends & Growth Strategist",
+      "activatable": false
+    },
+    {
+      "file": "workflows/03-producer.json",
+      "name": "RAHASYA | 03 Executive Producer",
+      "activatable": false
+    },
+    {
+      "file": "workflows/04-research.json",
+      "name": "RAHASYA | 04 Investigative Researcher",
+      "activatable": false
+    },
+    {
+      "file": "workflows/05-facts.json",
+      "name": "RAHASYA | 05 Fact Checker",
+      "activatable": false
+    },
+    {
+      "file": "workflows/06-writer.json",
+      "name": "RAHASYA | 06 Documentary Writer",
+      "activatable": false
+    },
+    {
+      "file": "workflows/07-retention.json",
+      "name": "RAHASYA | 07 Retention Editor",
+      "activatable": false
+    },
+    {
+      "file": "workflows/08-director.json",
+      "name": "RAHASYA | 08 Director",
+      "activatable": false
+    },
+    {
+      "file": "workflows/09-visuals.json",
+      "name": "RAHASYA | 09 Cinematographer & Visual Evidence",
+      "activatable": false
+    },
+    {
+      "file": "workflows/10-rights.json",
+      "name": "RAHASYA | 10 Rights & Provenance",
+      "activatable": false
+    },
+    {
+      "file": "workflows/11-voice.json",
+      "name": "RAHASYA | 11 Voice & Sound Director",
+      "activatable": false
+    },
+    {
+      "file": "workflows/12-render-moneyprinterturbo.json",
+      "name": "RAHASYA | 12 MoneyPrinterTurbo Renderer",
+      "activatable": false
+    },
+    {
+      "file": "workflows/13-packaging-seo-thumbnail.json",
+      "name": "RAHASYA | 13 Packaging, SEO & Thumbnail",
+      "activatable": false
+    },
+    {
+      "file": "workflows/14-compliance.json",
+      "name": "RAHASYA | 14 Compliance Editor",
+      "activatable": false
+    },
+    {
+      "file": "workflows/15-human-approval-gate.json",
+      "name": "RAHASYA | 15 Human Approval Gate",
+      "activatable": false
+    },
+    {
+      "file": "workflows/16-youtube-publisher.json",
+      "name": "RAHASYA | 16 YouTube Publisher",
+      "activatable": false
+    },
+    {
+      "file": "workflows/20-master-production-house.json",
+      "name": "RAHASYA | 20 Master Production House",
+      "activatable": true
+    },
+    {
+      "file": "workflows/30-analytics-growth-loop.json",
+      "name": "RAHASYA | 30 Analytics & Growth Loop",
+      "activatable": true
+    }
+  ]
+}

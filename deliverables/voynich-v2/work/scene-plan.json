@@ -1,0 +1,530 @@
+[
+  {
+    "image": "27-yale-folio-100v-101r.jpg",
+    "start": 0.0,
+    "end": 5.4957,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 5.4957,
+    "end": 10.9913,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "31-three-facts.jpg",
+    "start": 10.9913,
+    "end": 16.487,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "12-five-scribes.jpg",
+    "start": 16.487,
+    "end": 21.9826,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "02-codebreakers.jpg",
+    "start": 21.9826,
+    "end": 27.4783,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "06-botanical.jpg",
+    "start": 27.4783,
+    "end": 32.9739,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "04-stars.jpg",
+    "start": 32.9739,
+    "end": 38.4696,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "01-opening-library.jpg",
+    "start": 38.4696,
+    "end": 43.9652,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "07-cipher-analysis.jpg",
+    "start": 43.9652,
+    "end": 49.4609,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "27-yale-folio-100v-101r.jpg",
+    "start": 49.4609,
+    "end": 54.9565,
+    "duration": 5.4957,
+    "chapter": 1,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "11-vellum-workshop.jpg",
+    "start": 54.9565,
+    "end": 61.405,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "32-carbon-range.jpg",
+    "start": 61.405,
+    "end": 67.8534,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "05-lab.jpg",
+    "start": 67.8534,
+    "end": 74.3018,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "13-pigment-workshop.jpg",
+    "start": 74.3018,
+    "end": 80.7503,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "03-medieval-scribe.jpg",
+    "start": 80.7503,
+    "end": 87.1987,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "33-five-hands.jpg",
+    "start": 87.1987,
+    "end": 93.6471,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "12-five-scribes.jpg",
+    "start": 93.6471,
+    "end": 100.0956,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 100.0956,
+    "end": 106.544,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "31-three-facts.jpg",
+    "start": 106.544,
+    "end": 112.9924,
+    "duration": 6.4484,
+    "chapter": 2,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "34-six-worlds.jpg",
+    "start": 112.9924,
+    "end": 120.1913,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "06-botanical.jpg",
+    "start": 120.1913,
+    "end": 127.3901,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "26-yale-pharmaceutical-pages.jpg",
+    "start": 127.3901,
+    "end": 134.589,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "04-stars.jpg",
+    "start": 134.589,
+    "end": 141.7878,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "27-yale-folio-100v-101r.jpg",
+    "start": 141.7878,
+    "end": 148.9867,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 148.9867,
+    "end": 156.1855,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "06-botanical.jpg",
+    "start": 156.1855,
+    "end": 163.3844,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "04-stars.jpg",
+    "start": 163.3844,
+    "end": 170.5833,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "13-pigment-workshop.jpg",
+    "start": 170.5833,
+    "end": 177.7821,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "26-yale-pharmaceutical-pages.jpg",
+    "start": 177.7821,
+    "end": 184.981,
+    "duration": 7.1989,
+    "chapter": 3,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "35-timeline.jpg",
+    "start": 184.981,
+    "end": 192.2257,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "08-prague.jpg",
+    "start": 192.2257,
+    "end": 199.4705,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "14-rudolf-court.jpg",
+    "start": 199.4705,
+    "end": 206.7153,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "15-kircher-letter.jpg",
+    "start": 206.7153,
+    "end": 213.9601,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "08-prague.jpg",
+    "start": 213.9601,
+    "end": 221.2048,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "16-jesuit-library.jpg",
+    "start": 221.2048,
+    "end": 228.4496,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "09-antiquarian.jpg",
+    "start": 228.4496,
+    "end": 235.6944,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "15-kircher-letter.jpg",
+    "start": 235.6944,
+    "end": 242.9391,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "10-ending-vault.jpg",
+    "start": 242.9391,
+    "end": 250.1839,
+    "duration": 7.2448,
+    "chapter": 4,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 250.1839,
+    "end": 257.5942,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "18-language-analysis.jpg",
+    "start": 257.5942,
+    "end": 265.0045,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "36-pattern-not-translation.jpg",
+    "start": 265.0045,
+    "end": 272.4148,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "02-codebreakers.jpg",
+    "start": 272.4148,
+    "end": 279.8251,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "07-cipher-analysis.jpg",
+    "start": 279.8251,
+    "end": 287.2354,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "20-ai-analysis.jpg",
+    "start": 287.2354,
+    "end": 294.6457,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 294.6457,
+    "end": 302.056,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "18-language-analysis.jpg",
+    "start": 302.056,
+    "end": 309.4663,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "36-pattern-not-translation.jpg",
+    "start": 309.4663,
+    "end": 316.8766,
+    "duration": 7.4103,
+    "chapter": 5,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "37-four-theories.jpg",
+    "start": 316.8766,
+    "end": 324.0837,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "19-four-theories.jpg",
+    "start": 324.0837,
+    "end": 331.2907,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "02-codebreakers.jpg",
+    "start": 331.2907,
+    "end": 338.4977,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "17-glyph-macro.jpg",
+    "start": 338.4977,
+    "end": 345.7047,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "03-medieval-scribe.jpg",
+    "start": 345.7047,
+    "end": 352.9118,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "12-five-scribes.jpg",
+    "start": 352.9118,
+    "end": 360.1188,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "11-vellum-workshop.jpg",
+    "start": 360.1188,
+    "end": 367.3258,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "09-antiquarian.jpg",
+    "start": 367.3258,
+    "end": 374.5328,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "19-four-theories.jpg",
+    "start": 374.5328,
+    "end": 381.7399,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "37-four-theories.jpg",
+    "start": 381.7399,
+    "end": 388.9469,
+    "duration": 7.207,
+    "chapter": 6,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "20-ai-analysis.jpg",
+    "start": 388.9469,
+    "end": 396.555,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "05-lab.jpg",
+    "start": 396.555,
+    "end": 404.1631,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "38-solution-test.jpg",
+    "start": 404.1631,
+    "end": 411.7713,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "18-language-analysis.jpg",
+    "start": 411.7713,
+    "end": 419.3794,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ANALYTICAL VISUALIZATION"
+  },
+  {
+    "image": "27-yale-folio-100v-101r.jpg",
+    "start": 419.3794,
+    "end": 426.9875,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "SOURCE IMAGE  \u2022  YALE LIBRARY"
+  },
+  {
+    "image": "10-ending-vault.jpg",
+    "start": 426.9875,
+    "end": 434.5956,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "01-opening-library.jpg",
+    "start": 434.5956,
+    "end": 442.2038,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  },
+  {
+    "image": "39-final-question.jpg",
+    "start": 442.2038,
+    "end": 449.8119,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "EDITORIAL EVIDENCE GRAPHIC"
+  },
+  {
+    "image": "10-ending-vault.jpg",
+    "start": 449.8119,
+    "end": 457.42,
+    "duration": 7.6081,
+    "chapter": 7,
+    "label": "ORIGINAL DRAMATIZED VISUAL"
+  }
+]
