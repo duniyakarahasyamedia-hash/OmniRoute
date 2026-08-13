@@ -521,6 +521,52 @@ function autopilot(topicText) {
   return p;
 }
 
+function startCinema() {
+  const p = project();
+  const lines = (p?.script?.lines || []).filter((l) => l.who === "VO");
+  const stills = ["./broll-1.png", "./broll-2.png", "./broll-3.png"];
+  if (!lines.length || !$("#cinemaLine")) return;
+  $("#cinemaChannel").textContent = p.channel?.name || "Saathi";
+  let i = 0;
+  const play = () => {
+    if (!lines[i]) {
+      $("#cinemaLine").textContent = "Episode complete. Next video khud queue ho rahi hai.";
+      setStatus("", "Video yahi ready hai");
+      return;
+    }
+    const line = lines[i];
+    $("#cinemaLine").textContent = line.text;
+    $("#cinemaBg").src = stills[i % stills.length];
+    $("#cinemaClock").textContent = line.t || "";
+    setStatus("thinking", `Playing ${i + 1}/${lines.length}`);
+    let moved = false;
+    const next = () => {
+      if (moved) return;
+      moved = true;
+      i += 1;
+      setTimeout(play, 350);
+    };
+    setTimeout(next, Math.min(9000, 2800 + line.text.length * 35));
+    MediaKit.speakLine(line.text).finally(next);
+  };
+  play();
+}
+
+function handsFree() {
+  if (!project()?.script) autopilot();
+  const p = project();
+  ensureMedia(p);
+  if (!p.media.thumbs?.length) {
+    p.media.thumbs = [1, 2, 3].map((n) => ({ id: `broll-${n}`, kind: "stock", src: `./broll-${n}.png` }));
+    p.media.selectedThumb = "broll-1";
+  }
+  if (!p.media.srt && p.script) p.media.srt = MediaKit.makeSrt(p);
+  applyProject(p);
+  startCinema();
+  liveSearch(p).catch(() => {});
+  pullWiki().catch(() => {});
+}
+
 function queryForSearch(p) {
   const ch = p?.channel || state.channel;
   return `${ch.niche} ${ch.country} ${ch.language} ${p?.selectedTopic?.topic || ch.subNiche || ""}`.trim();
@@ -544,9 +590,10 @@ async function genThumbs(p = project()) {
   ensureMedia(p);
   setStatus("thinking", "Painting thumbnails…");
   const studio = MediaKit.studioThumbs(p);
+  const localBroll = [1, 2, 3].map((n) => ({ id: `broll-${n}`, kind: "stock", src: `./broll-${n}.png` }));
   const ai = MediaKit.aiThumbUrls(p);
   const stock = await Facts.stockStills(`${state.channel.country} ${state.channel.niche} street`).catch(() => []);
-  p.media.thumbs = [...studio, ...ai, ...stock];
+  p.media.thumbs = [...studio, ...localBroll, ...ai, ...stock];
   p.media.selectedThumb = studio[0].id;
   applyProject(p);
   setStatus("", "Thumbnails + stock B-roll ready");
@@ -941,6 +988,7 @@ function bind() {
   if ($("#ytClientId")) $("#ytClientId").value = state.settings.ytClientId || "";
 
   renderAll();
+  handsFree();
 
   $("#settingsProvider").addEventListener("change", () => {
     state.settings.provider = $("#settingsProvider").value;
