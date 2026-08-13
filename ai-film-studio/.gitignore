@@ -10,5 +10,6 @@ queue.txt
 done.txt
 
 # Python
+.venv/
 __pycache__/
 *.pyc

@@ -1,0 +1,19 @@
+# AI Film Studio — Python dependencies
+# Installed by setup.py into ai-film-studio/.venv
+
+# Script / shot-list (Gemini)
+google-genai>=2.11
+
+# Hindi voiceover (edge-tts) — free, no key needed
+edge-tts>=7.0
+
+# ffmpeg fallback (auto-downloads a static ffmpeg binary)
+imageio-ffmpeg>=0.5
+
+# YouTube upload (Data API v3)
+google-api-python-client>=2.100
+google-auth>=2.20
+google-auth-oauthlib>=1.0
+
+# misc
+requests>=2.31

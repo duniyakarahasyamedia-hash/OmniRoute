@@ -83,7 +83,27 @@ python3 scheduler.py --engine mpt --upload --loop
 
 ---
 
-## 1. Setup (ek baar)
+## 1. Setup (ek baar) — ek hi command
+
+```bash
+cd ai-film-studio
+python3 setup.py          # venv + dependencies + config + MPT + ffmpeg sab ready
+
+# phir aapki Gemini key daalo (setup.py yahi remind karega):
+#   ai-film-studio/config.toml           -> gemini_api_key = "..."
+#   repos/MoneyPrinterTurbo/config.toml  -> gemini_api_key = "..."
+
+# ab run karo:
+./run.sh --idea "आपकी कहानी" --engine mpt      # Linux/macOS
+run.bat --idea "आपकी कहानी" --engine mpt       # Windows
+```
+
+> `setup.py` kya karta hai: Python 3.11 check → `.venv` banata hai → saari deps
+> install (google-genai, edge-tts, YouTube API, ffmpeg fallback) → `config.toml`
+> banata hai → MoneyPrinterTurbo ka config + `uv sync` → ffmpeg verify. Idempotent
+> hai — dobara chalane par skip karta hai jo already ready hai.
+
+### Manual setup (agar chaaho)
 
 ```bash
 # 1) Python 3.11+ chahiye; ffmpeg ya to system par ho ya imageio-ffmpeg se aa jayega
@@ -244,6 +264,9 @@ python3 scripts/upload_youtube.py storage/film-xxxxxxxx/final.mp4 \
 ```
 ai-film-studio/
 ├── config.example.toml                 # apni keys ka template (config.toml = gitignored)
+├── setup.py                            # ONE-COMMAND setup (venv + deps + config + MPT)
+├── requirements.txt                    # python dependencies
+├── run.sh / run.bat                    # launchers (Linux/macOS / Windows)
 ├── run_film.py                         # ONE-COMMAND orchestrator (single/batch/upload)
 ├── scheduler.py                        # daily auto-runner (cron/daemon)
 ├── queue.example.txt                   # ideas list ka template (queue.txt = gitignored)
