@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="hi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Saathi — tumhara AI agent</title>
+    <meta name="description" content="Saathi is your personal Hinglish AI agent with memory, tasks, tools, and optional cloud models." />
+    <link rel="icon" href="./avatar.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel sidebar">
+        <div class="brand">
+          <img src="./avatar.png" alt="Saathi" />
+          <div>
+            <h1>Saathi</h1>
+            <p>Personal AI agent</p>
+          </div>
+        </div>
+        <button id="newChat" class="chip active">+ Nayi chat</button>
+        <div class="section-title">Chats</div>
+        <div id="sessions" class="session-list"></div>
+      </aside>
+
+      <main class="panel stage">
+        <header class="topbar">
+          <div class="identity">
+            <img src="./avatar.png" alt="" />
+            <div>
+              <strong id="agentName">Saathi</strong>
+              <div id="status" class="status"><i></i>Online · ready</div>
+            </div>
+          </div>
+          <div class="chip-row">
+            <span class="chip">Hinglish</span>
+            <span class="chip">Memory</span>
+            <span class="chip">Tools</span>
+          </div>
+        </header>
+
+        <section id="hero" class="hero">
+          <img src="./avatar.png" alt="Saathi avatar" />
+          <h2>Bolo, kya kaam hai?</h2>
+          <p>
+            Main tumhara personal agent hoon. Time, hisaab, yaadein, tasks, jokes — sab yahin.
+            Deep answers ke liye Settings mein free Groq / OpenRouter key laga dena.
+          </p>
+          <div id="quick" class="quick-row"></div>
+        </section>
+
+        <div id="messages" class="messages"></div>
+
+        <form id="composer" class="composer">
+          <div class="box">
+            <button type="button" id="mic" class="icon-btn" title="Voice">🎙</button>
+            <textarea id="input" rows="1" placeholder="Hinglish mein likho… Enter to send"></textarea>
+            <button class="send" type="submit">Bhejo</button>
+          </div>
+          <div class="hint">Local tools hamesha on hain. Cloud model optional hai.</div>
+        </form>
+      </main>
+
+      <aside class="panel rail">
+        <div class="section-title">Memory</div>
+        <div id="facts" class="memory-list"></div>
+        <div class="section-title">Tasks</div>
+        <div id="tasks" class="task-list"></div>
+        <div class="section-title">Settings</div>
+        <div class="settings">
+          <label>Agent ka naam</label>
+          <input id="settingsName" placeholder="Saathi" />
+          <label>Tumhara naam</label>
+          <input id="settingsUser" placeholder="Aarav" />
+          <label>Model provider</label>
+          <select id="settingsProvider">
+            <option value="auto">Auto (free + key)</option>
+            <option value="pollinations">Pollinations free</option>
+            <option value="groq">Groq</option>
+            <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="custom">Custom OpenAI-compatible</option>
+          </select>
+          <label>API key (optional)</label>
+          <input id="settingsKey" type="password" placeholder="gsk_… / sk-…" />
+          <label>Model id</label>
+          <input id="settingsModel" placeholder="openai / llama-3.1-8b-instant" />
+          <label><input id="settingsVoice" type="checkbox" /> Voice replies</label>
+          <button id="saveSettings" class="send" type="button">Save</button>
+        </div>
+      </aside>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
