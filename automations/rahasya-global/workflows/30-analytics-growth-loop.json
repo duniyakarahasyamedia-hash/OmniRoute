@@ -1,0 +1,460 @@
+{
+  "name": "RAHASYA | 30 Analytics & Growth Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 8,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "id": "0af1eb2b-3b6d-5ca9-b6aa-0dd1a3e12d27",
+      "name": "Daily 08:15 ET",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, -100]
+    },
+    {
+      "parameters": {},
+      "id": "8c5e5fb8-fc26-5771-bff4-5cdf96449a7a",
+      "name": "Manual Analytics Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/channels",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "part",
+              "value": "id,snippet"
+            },
+            {
+              "name": "mine",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "9ef7794f-489d-5eab-b29c-71a063a20ba5",
+      "name": "Verify Analytics OAuth Channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [220, 0],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "__YOUTUBE_CREDENTIAL_ID__",
+          "name": "__YOUTUBE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json || {};\nconst body = response.body ?? response;\nconst channels = Array.isArray(body.items) ? body.items : [];\nconst expected = '__YOUTUBE_CHANNEL_ID__';\nif (channels.length !== 1 || channels[0]?.id !== expected) {\n  throw new Error('YouTube OAuth credential is not authorized for the configured RAHASYA channel');\n}\nreturn [{ json: { verified_channel_id: expected, verified_channel_title: String(channels[0]?.snippet?.title || '') } }];"
+      },
+      "id": "90292116-42a5-5778-971e-bec2e47cfabf",
+      "name": "Enforce Analytics Channel Identity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT project_id, published_video_id FROM rahasya_projects WHERE status='published' AND published_video_id IS NOT NULL ORDER BY updated_at DESC LIMIT 200;",
+        "options": {
+          "queryReplacement": "={{ [] }}"
+        }
+      },
+      "id": "50f97481-edf0-515d-9a3a-315f3df224aa",
+      "name": "Get Published Videos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [660, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r.published_video_id);\nconst endDate = new Date();\nconst startDate = new Date(Date.now() - 35 * 86400000);\nconst iso = d => d.toISOString().slice(0,10);\nreturn rows.map(row => ({ json: { project_id: row.project_id, video_id: row.published_video_id, start_date: iso(startDate), end_date: iso(endDate) } }));"
+      },
+      "id": "83e449f2-3b65-59e1-aba6-634719d1eb6e",
+      "name": "Prepare Per-Video Analytics Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://youtubeanalytics.googleapis.com/v2/reports",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ids",
+              "value": "channel==MINE"
+            },
+            {
+              "name": "startDate",
+              "value": "={{ $json.start_date }}"
+            },
+            {
+              "name": "endDate",
+              "value": "={{ $json.end_date }}"
+            },
+            {
+              "name": "dimensions",
+              "value": "day"
+            },
+            {
+              "name": "filters",
+              "value": "={{ 'video==' + $json.video_id }}"
+            },
+            {
+              "name": "metrics",
+              "value": "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,comments,subscribersGained,subscribersLost,shares"
+            },
+            {
+              "name": "sort",
+              "value": "day"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "347b4e3f-b19a-5bea-bf6b-3f9f5aeb0a99",
+      "name": "YouTube Analytics Reports",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1100, 0],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "__YOUTUBE_CREDENTIAL_ID__",
+          "name": "__YOUTUBE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const requests = $('Prepare Per-Video Analytics Queries').all();\nconst responses = $input.all();\nconst snapshots = [];\nfor (let i=0; i<responses.length; i++) {\n  const body = responses[i].json?.body ?? responses[i].json;\n  const columns = (body.columnHeaders || []).map(c => c.name);\n  for (const row of (body.rows || [])) {\n    const record = Object.fromEntries(columns.map((name, index) => [name, row[index]]));\n    const date = record.day;\n    if (!date) continue;\n    delete record.day;\n    for (const key of Object.keys(record)) record[key] = Number(record[key] || 0);\n    snapshots.push({ video_id: requests[i].json.video_id, project_id: requests[i].json.project_id, snapshot_date: date, metrics: record });\n  }\n}\nreturn [{ json: { snapshots } }];"
+      },
+      "id": "717e0fc4-7842-5cb8-8f52-242bad35e677",
+      "name": "Parse Daily Analytics Snapshots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rahasya_analytics_snapshots(video_id, project_id, snapshot_date, metrics, fetched_at)\nSELECT x->>'video_id', NULLIF(x->>'project_id',''), (x->>'snapshot_date')::date, x->'metrics', now()\nFROM jsonb_array_elements($1::jsonb) x\nON CONFLICT (video_id, snapshot_date) DO UPDATE SET project_id=EXCLUDED.project_id, metrics=EXCLUDED.metrics, fetched_at=now();",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify($json.snapshots)] }}"
+        }
+      },
+      "id": "98323c23-cd07-5629-b27a-649c6ab07889",
+      "name": "Upsert Analytics Snapshots",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [1540, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.video_id, max(p.topic) AS topic,\n  sum(COALESCE((s.metrics->>'views')::numeric,0)) FILTER (WHERE s.snapshot_date >= current_date - 13) AS recent_views,\n  sum(COALESCE((s.metrics->>'views')::numeric,0)) FILTER (WHERE s.snapshot_date BETWEEN current_date - 27 AND current_date - 14) AS prior_views,\n  sum(COALESCE((s.metrics->>'estimatedMinutesWatched')::numeric,0)) FILTER (WHERE s.snapshot_date >= current_date - 13) AS recent_watch_minutes,\n  avg(NULLIF((s.metrics->>'averageViewPercentage')::numeric,0)) FILTER (WHERE s.snapshot_date >= current_date - 13) AS recent_avg_percentage,\n  sum(COALESCE((s.metrics->>'subscribersGained')::numeric,0) - COALESCE((s.metrics->>'subscribersLost')::numeric,0)) FILTER (WHERE s.snapshot_date >= current_date - 13) AS recent_net_subscribers,\n  sum(COALESCE((s.metrics->>'likes')::numeric,0) + COALESCE((s.metrics->>'comments')::numeric,0) + COALESCE((s.metrics->>'shares')::numeric,0)) FILTER (WHERE s.snapshot_date >= current_date - 13) AS recent_engagement\nFROM rahasya_analytics_snapshots s\nLEFT JOIN rahasya_projects p ON p.published_video_id=s.video_id\nWHERE s.snapshot_date >= current_date - 27\nGROUP BY s.video_id\nORDER BY recent_views DESC NULLS LAST;",
+        "options": {
+          "queryReplacement": "={{ [] }}"
+        }
+      },
+      "id": "1bfa8704-2ab4-5925-9f20-416d38228707",
+      "name": "Build 14-Day Comparison",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [1760, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const performance = $input.all().map(i => i.json).filter(row => row?.video_id);\nif (!performance.length) return [];\nconst requestBody = {\n  model: '__OMNIROUTE_MODEL__', temperature: 0.25, max_tokens: 3500, response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are the growth analytics executive for RAHASYA: Global Mysteries, a US-based English documentary YouTube channel. Analyze recent 14 days versus prior 14 days. Avoid causal claims the data cannot support. Return strict JSON: {executive_summary,video_diagnostics:[{video_id,signal,likely_causes,next_action}],retention_actions,title_thumbnail_actions,cadence_actions,return_viewer_actions,experiments:[{hypothesis,variant_a,variant_b,primary_metric,guardrail,duration_days}],next_topics,risks}. Optimize long-term viewer satisfaction, not spam.' },\n    { role: 'user', content: JSON.stringify({ period_end: new Date().toISOString().slice(0,10), performance }) },\n  ],\n};\nreturn [{ json: { project: { id: 'rahasya-channel-growth' }, requestBody, performance } }];"
+      },
+      "id": "54c6f931-8a99-55bf-bb88-48ad283a6c4c",
+      "name": "Prepare Growth Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "__OMNIROUTE_BASE_URL__/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-OmniRoute-Session-Id",
+              "value": "={{ $json.project.id }}"
+            },
+            {
+              "name": "X-OmniRoute-No-Memory",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "baa93078-8b94-5edc-8941-4b2e608122b5",
+      "name": "OmniRoute Growth Analyst",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [2200, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "__OMNIROUTE_CREDENTIAL_ID__",
+          "name": "__OMNIROUTE_CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json || {}; const body = response.body ?? response;\nconst raw = body?.choices?.[0]?.message?.content;\nif (typeof raw !== 'string') throw new Error('Growth agent response is missing');\nlet recommendations;\ntry { recommendations = JSON.parse(raw.trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'')); } catch { throw new Error('Growth agent returned invalid JSON'); }\nconst headers = response.headers || {};\nconst header = name => { const key=Object.keys(headers).find(k=>k.toLowerCase()===name.toLowerCase()); return key ? headers[key] : undefined; };\nconst end = new Date(); const start = new Date(Date.now()-27*86400000); const iso=d=>d.toISOString().slice(0,10);\nconst key = `growth:${iso(start)}:${iso(end)}`; const requestId=header('x-omniroute-request-id') || `${key}:${$execution.id}`; const usage=body.usage||{};\nreturn [{ json: { replacements: [key, iso(start), iso(end), JSON.stringify(recommendations), JSON.stringify(recommendations.experiments || []), requestId, header('x-omniroute-provider') || '', header('x-omniroute-model') || body.model || '', requestId, Number(usage.prompt_tokens||0), Number(usage.completion_tokens||0), Number(header('x-omniroute-response-cost')||usage.cost_usd||0), Number(header('x-omniroute-latency-ms')||0), header('x-omniroute-cache')||'', header('x-omniroute-fallback-attempts')||'', header('x-omniroute-decision')||''] } }];"
+      },
+      "id": "8f56fb6f-21fe-5030-bb9d-ca4190849305",
+      "name": "Parse Growth Recommendations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH g AS (\n  INSERT INTO rahasya_growth_recommendations(recommendation_key, period_start, period_end, recommendations, experiment_plan)\n  VALUES ($1, $2::date, $3::date, $4::jsonb, $5::jsonb)\n  ON CONFLICT (recommendation_key) DO UPDATE SET recommendations=EXCLUDED.recommendations, experiment_plan=EXCLUDED.experiment_plan\n), c AS (\n  INSERT INTO rahasya_cost_ledger(cost_key, project_id, stage, provider, model, request_id, input_tokens, output_tokens, cost_usd, latency_ms, cache_status, fallback, decision, metadata)\n  VALUES ($6, NULL, 'analytics_growth', $7, $8, $9, $10::bigint, $11::bigint, $12::numeric, $13::integer, $14, $15, $16, '{}'::jsonb)\n  ON CONFLICT (cost_key) DO NOTHING\n)\nSELECT $4::jsonb AS recommendations;",
+        "options": {
+          "queryReplacement": "={{ $json.replacements }}"
+        }
+      },
+      "id": "7d51c111-a5ec-56bb-92b2-65a3d44bad42",
+      "name": "Persist Growth Recommendations & Cost",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [2640, 0],
+      "credentials": {
+        "postgres": {
+          "id": "__POSTGRES_CREDENTIAL_ID__",
+          "name": "__POSTGRES_CREDENTIAL_NAME__"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Verify Analytics OAuth Channel": {
+      "main": [
+        [
+          {
+            "node": "Enforce Analytics Channel Identity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enforce Analytics Channel Identity": {
+      "main": [
+        [
+          {
+            "node": "Get Published Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Published Videos": {
+      "main": [
+        [
+          {
+            "node": "Prepare Per-Video Analytics Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Per-Video Analytics Queries": {
+      "main": [
+        [
+          {
+            "node": "YouTube Analytics Reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube Analytics Reports": {
+      "main": [
+        [
+          {
+            "node": "Parse Daily Analytics Snapshots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Daily Analytics Snapshots": {
+      "main": [
+        [
+          {
+            "node": "Upsert Analytics Snapshots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Analytics Snapshots": {
+      "main": [
+        [
+          {
+            "node": "Build 14-Day Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 14-Day Comparison": {
+      "main": [
+        [
+          {
+            "node": "Prepare Growth Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Growth Agent": {
+      "main": [
+        [
+          {
+            "node": "OmniRoute Growth Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OmniRoute Growth Analyst": {
+      "main": [
+        [
+          {
+            "node": "Parse Growth Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Growth Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Persist Growth Recommendations & Cost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 08:15 ET": {
+      "main": [
+        [
+          {
+            "node": "Verify Analytics OAuth Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Analytics Run": {
+      "main": [
+        [
+          {
+            "node": "Verify Analytics OAuth Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York"
+  },
+  "tags": []
+}

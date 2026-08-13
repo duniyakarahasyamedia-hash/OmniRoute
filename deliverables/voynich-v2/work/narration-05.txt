@@ -1,0 +1,9 @@
+Look closely and the writing is not random scribbling. It runs mainly left to right. Glyphs form repeated word-like units. Some forms favor the beginning of a line; others cluster near certain illustrations. Neighboring words can differ by only one sign.
+
+Researchers have tested frequency, repetition, entropy, and relationships between sections. Some results resemble patterns found in natural language. That sounds like a breakthrough—until the caution arrives.
+
+A cipher can preserve statistical structure. A lost shorthand can create it. A specially designed notation system can create it. Even an algorithm for generating meaningless text can produce convincing repetition. And because some glyphs are ambiguous, changing the transcription can change the statistics.
+
+Linguists Claire Bowern and Luke Lindemann reviewed this evidence and reached a careful conclusion: computation can eliminate weak ideas and reveal structure, but it has not established one accepted language or decipherment.
+
+Patterns prove that there is a system. They do not yet prove what the system says.

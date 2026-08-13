@@ -1,0 +1,600 @@
+1
+00:00:00,000 --> 00:00:03,933
+Three facts make this book almost
+impossible to dismiss.
+
+2
+00:00:03,933 --> 00:00:07,978
+First: its parchment was made more than six
+centuries ago.
+
+3
+00:00:07,978 --> 00:00:12,410
+Second: at least five different people
+appear to have written it.
+
+4
+00:00:12,410 --> 00:00:16,343
+Third: after generations of cryptographers,
+linguists, historians,
+
+5
+00:00:16,343 --> 00:00:19,612
+and computer scientists, no one can read a
+single page with
+
+6
+00:00:19,612 --> 00:00:23,268
+scholarly agreement. Inside Yale's Beinecke
+Library, the object is
+
+7
+00:00:23,268 --> 00:00:27,090
+cataloged simply as Manuscript 408. Its two
+hundred thirty-four pages
+
+8
+00:00:27,090 --> 00:00:31,024
+contain impossible plants, rotating skies,
+human figures, and thousands
+
+9
+00:00:31,024 --> 00:00:34,237
+of words in an alphabet found nowhere else.
+
+10
+00:00:34,237 --> 00:00:37,284
+If it is a cipher, the key has vanished.
+
+11
+00:00:37,284 --> 00:00:40,830
+If it is a language, every known speaker is
+gone.
+
+12
+00:00:40,830 --> 00:00:44,652
+And if it is a hoax, someone invested
+extraordinary time, skill,
+
+13
+00:00:44,652 --> 00:00:47,478
+and money to create a lie that has survived
+for six
+
+14
+00:00:47,478 --> 00:00:51,300
+hundred years. This is not the story of a
+solved code.
+
+15
+00:00:51,300 --> 00:00:54,957
+It is the evidence behind the book no one
+can read.
+
+16
+00:00:54,957 --> 00:00:57,827
+Begin with the object, not the theories.
+
+17
+00:00:57,827 --> 00:01:01,167
+The Voynich Manuscript is a small parchment
+codex, about nine by
+
+18
+00:01:01,167 --> 00:01:04,821
+six inches. Radiocarbon analysis of four
+samples dated its animal-skin
+
+19
+00:01:04,821 --> 00:01:07,221
+pages to between 1404 and 1438.
+
+20
+00:01:07,221 --> 00:01:11,031
+Its inks and pigments use materials
+compatible with historical manuscript
+
+21
+00:01:11,031 --> 00:01:14,789
+production. Important distinction:
+radiocarbon dates the parchment,
+
+22
+00:01:14,789 --> 00:01:17,607
+not each stroke of ink. By itself, it
+cannot prove the
+
+23
+00:01:17,607 --> 00:01:20,060
+exact day the writing was added.
+
+24
+00:01:20,060 --> 00:01:23,818
+But together with the book's physical
+construction, pigments, wear,
+
+25
+00:01:23,818 --> 00:01:27,471
+and later ownership record, the evidence
+strongly supports a genuinely
+
+26
+00:01:27,471 --> 00:01:30,811
+medieval codex. Then paleographer Lisa
+Fagin Davis examined tiny
+
+27
+00:01:30,811 --> 00:01:35,195
+differences in the handwriting: how glyphs
+lean, connect, and repeat.
+
+28
+00:01:35,195 --> 00:01:38,275
+Her conclusion was not one scribe, but
+five.
+
+29
+00:01:38,275 --> 00:01:41,041
+That changes the scale of the mystery.
+
+30
+00:01:41,041 --> 00:01:44,694
+Several people seem to have learned the
+same unfamiliar writing system
+
+31
+00:01:44,694 --> 00:01:47,617
+and coordinated a large illustrated book.
+
+32
+00:01:47,617 --> 00:01:50,331
+We still do not know what they wrote.
+
+33
+00:01:50,331 --> 00:01:52,992
+But we know this was organized work.
+
+34
+00:01:52,992 --> 00:01:57,531
+Open the manuscript and it divides into six
+visual worlds.
+
+35
+00:01:57,531 --> 00:02:00,950
+The largest section resembles an herbal.
+
+36
+00:02:00,950 --> 00:02:04,866
+Each page presents a plant, but many roots,
+leaves, and flowers
+
+37
+00:02:04,866 --> 00:02:09,280
+resist reliable identification. Next come
+astronomical and astrological
+
+38
+00:02:09,280 --> 00:02:13,321
+pages: suns, stars, zodiac-like rings, and
+circular diagrams that
+
+39
+00:02:13,321 --> 00:02:17,548
+almost resemble calendars. A third section
+shows small human figures
+
+40
+00:02:17,548 --> 00:02:21,154
+linked by pools, pipes, and flowing shapes.
+
+41
+00:02:21,154 --> 00:02:25,568
+Curators call it biological or
+balneological—connected with bathing—but
+
+42
+00:02:25,568 --> 00:02:29,608
+that label describes the imagery, not its
+meaning.
+
+43
+00:02:29,608 --> 00:02:33,960
+Cosmological foldouts expand into elaborate
+medallions.
+
+44
+00:02:33,960 --> 00:02:38,809
+Pharmaceutical pages pair plant parts with
+vessel-like objects.
+
+45
+00:02:38,809 --> 00:02:42,601
+The final pages look like short recipes,
+each entry marked by
+
+46
+00:02:42,601 --> 00:02:47,947
+a star-shaped flower. Every image feels one
+step away from recognition.
+
+47
+00:02:47,947 --> 00:02:51,740
+That is the trap. A plant can look
+medicinal without matching
+
+48
+00:02:51,740 --> 00:02:55,780
+a species. A circle can look astronomical
+without mapping a known
+
+49
+00:02:55,780 --> 00:02:59,759
+sky. Because the labels cannot be read,
+pictures cannot securely
+
+50
+00:02:59,759 --> 00:03:04,981
+explain the words—and the words cannot
+securely explain the pictures.
+
+51
+00:03:04,981 --> 00:03:08,600
+The ownership trail begins in imperial
+Prague.
+
+52
+00:03:08,600 --> 00:03:12,872
+Yale identifies Holy Roman Emperor Rudolf
+the Second as the manuscript's
+
+53
+00:03:12,872 --> 00:03:16,847
+first confirmed owner. A surviving account
+says he paid six hundred
+
+54
+00:03:16,847 --> 00:03:20,229
+gold ducats and believed the work might be
+by the English
+
+55
+00:03:20,229 --> 00:03:24,144
+thinker Roger Bacon. Modern scholarship
+treats that attribution as
+
+56
+00:03:24,144 --> 00:03:28,179
+speculation. The book later passed through
+the library of pharmacist
+
+57
+00:03:28,179 --> 00:03:32,925
+Jacobus de Tepenec and then to Prague
+alchemist Georgius Baresch.
+
+58
+00:03:32,925 --> 00:03:36,841
+Baresch called it a riddle and asked the
+celebrated Jesuit scholar
+
+59
+00:03:36,841 --> 00:03:40,638
+Athanasius Kircher for help. In 1666,
+Johannes Marcus Marci sent
+
+60
+00:03:40,638 --> 00:03:44,376
+the manuscript to Kircher in Rome with a
+letter still preserved
+
+61
+00:03:44,376 --> 00:03:48,173
+inside it. Then, silence. For more than two
+centuries, the trail
+
+62
+00:03:48,173 --> 00:03:52,207
+becomes uncertain. In 1912, Polish-American
+rare-book dealer Wilfrid
+
+63
+00:03:52,207 --> 00:03:56,242
+Voynich purchased it from a Jesuit college
+near Rome.
+
+64
+00:03:56,242 --> 00:04:00,573
+The mystery took his name. After passing
+through later owners, bookseller
+
+65
+00:04:00,573 --> 00:04:03,776
+H. P. Kraus donated it to Yale in 1969.
+
+66
+00:04:03,776 --> 00:04:08,226
+Today every page is online. Access is no
+longer the problem.
+
+67
+00:04:08,226 --> 00:04:10,184
+Interpretation is.
+
+68
+00:04:10,184 --> 00:04:13,940
+Look closely and the writing is not random
+scribbling.
+
+69
+00:04:13,940 --> 00:04:16,336
+It runs mainly left to right.
+
+70
+00:04:16,336 --> 00:04:20,038
+Glyphs form repeated word-like units. Some
+forms favor the beginning
+
+71
+00:04:20,038 --> 00:04:23,740
+of a line; others cluster near certain
+illustrations.
+
+72
+00:04:23,740 --> 00:04:27,061
+Neighboring words can differ by only one
+sign.
+
+73
+00:04:27,061 --> 00:04:31,036
+Researchers have tested frequency,
+repetition, entropy, and relationships
+
+74
+00:04:31,036 --> 00:04:34,574
+between sections. Some results resemble
+patterns found in natural
+
+75
+00:04:34,574 --> 00:04:39,093
+language. That sounds like a
+breakthrough—until the caution arrives.
+
+76
+00:04:39,093 --> 00:04:42,305
+A cipher can preserve statistical
+structure.
+
+77
+00:04:42,305 --> 00:04:44,810
+A lost shorthand can create it.
+
+78
+00:04:44,810 --> 00:04:48,403
+A specially designed notation system can
+create it.
+
+79
+00:04:48,403 --> 00:04:52,323
+Even an algorithm for generating
+meaningless text can produce convincing
+
+80
+00:04:52,323 --> 00:04:56,515
+repetition. And because some glyphs are
+ambiguous, changing the transcription
+
+81
+00:04:56,515 --> 00:05:00,272
+can change the statistics. Linguists Claire
+Bowern and Luke Lindemann
+
+82
+00:05:00,272 --> 00:05:03,974
+reviewed this evidence and reached a
+careful conclusion: computation
+
+83
+00:05:03,974 --> 00:05:07,295
+can eliminate weak ideas and reveal
+structure, but it has not
+
+84
+00:05:07,295 --> 00:05:10,833
+established one accepted language or
+decipherment.
+
+85
+00:05:10,833 --> 00:05:13,719
+Patterns prove that there is a system.
+
+86
+00:05:13,719 --> 00:05:16,877
+They do not yet prove what the system says.
+
+87
+00:05:16,877 --> 00:05:20,284
+Four broad explanations remain in
+contention.
+
+88
+00:05:20,284 --> 00:05:24,544
+Theory one: an ordinary language hidden by
+substitution, abbreviation,
+
+89
+00:05:24,544 --> 00:05:28,462
+or a complex cipher. The regularity
+fits—but no proposed key produces
+
+90
+00:05:28,462 --> 00:05:31,984
+a coherent reading across the whole
+manuscript.
+
+91
+00:05:31,984 --> 00:05:35,675
+Theory two: a lost shorthand or invented
+alphabet.
+
+92
+00:05:35,675 --> 00:05:39,310
+This could explain why the text looks
+linguistic while resisting
+
+93
+00:05:39,310 --> 00:05:43,172
+familiar scripts. Without a parallel text,
+it is extremely difficult
+
+94
+00:05:43,172 --> 00:05:46,807
+to test. Theory three: a constructed
+notation meaningful only to
+
+95
+00:05:46,807 --> 00:05:51,009
+a small community—perhaps medical,
+religious, or scholarly.
+
+96
+00:05:51,009 --> 00:05:54,758
+Five scribal hands make a shared convention
+plausible, but they do
+
+97
+00:05:54,758 --> 00:05:58,733
+not reveal its purpose. Theory four: an
+elaborate hoax.
+
+98
+00:05:58,733 --> 00:06:02,481
+Experiments show that rule-based nonsense
+can imitate some Voynich
+
+99
+00:06:02,481 --> 00:06:06,627
+statistics. But “meaningless” does not
+explain the costly parchment,
+
+100
+00:06:06,627 --> 00:06:10,830
+sustained artwork, multiple writers, or the
+intended buyer.
+
+101
+00:06:10,830 --> 00:06:14,862
+A hoax would still be a remarkable
+organized production.
+
+102
+00:06:14,862 --> 00:06:18,895
+Each theory explains one clue and collides
+with another.
+
+103
+00:06:18,895 --> 00:06:22,529
+Cipher explains secrecy, but not the
+missing key.
+
+104
+00:06:22,529 --> 00:06:25,994
+Language explains structure, but not
+identity.
+
+105
+00:06:25,994 --> 00:06:28,947
+Hoax explains failure—but not effort.
+
+106
+00:06:28,947 --> 00:06:32,406
+Artificial intelligence has now joined the
+hunt, comparing glyph
+
+107
+00:06:32,406 --> 00:06:36,027
+sequences and candidate languages at
+enormous scale.
+
+108
+00:06:36,027 --> 00:06:39,431
+It can find similarities no person would
+notice.
+
+109
+00:06:39,431 --> 00:06:43,377
+It can also force a dramatic answer from a
+bad assumption.
+
+110
+00:06:43,377 --> 00:06:46,835
+A real solution needs more than a viral
+headline.
+
+111
+00:06:46,835 --> 00:06:50,294
+The method must be reproducible. The
+grammar and vocabulary must
+
+112
+00:06:50,294 --> 00:06:54,185
+make historical sense. And the same key
+must produce consistent readings
+
+113
+00:06:54,185 --> 00:06:58,130
+across botanical pages, circular diagrams,
+and plain text.
+
+114
+00:06:58,130 --> 00:07:02,724
+No public claim has yet crossed that
+threshold to scholarly consensus.
+
+115
+00:07:02,724 --> 00:07:06,723
+Perhaps the missing key survives in an
+uncataloged archive.
+
+116
+00:07:06,723 --> 00:07:10,777
+Perhaps this is a writing system with no
+surviving relative.
+
+117
+00:07:10,777 --> 00:07:14,181
+Or perhaps the manuscript was designed to
+create the feeling of
+
+118
+00:07:14,181 --> 00:07:17,964
+meaning without ever surrendering it. Here
+is what the evidence allows
+
+119
+00:07:17,964 --> 00:07:21,585
+us to say: the Voynich Manuscript is a
+genuine medieval codex,
+
+120
+00:07:21,585 --> 00:07:25,260
+produced by multiple hands, filled with an
+unidentified script whose
+
+121
+00:07:25,260 --> 00:07:29,259
+meaning remains unresolved. The pages are
+open to everyone.
+
+122
+00:07:29,259 --> 00:07:32,934
+The answer is not. This is RAHASYA: Global
+Mysteries.
+
+123
+00:07:32,934 --> 00:07:36,177
+Which theory best fits the evidence—and
+what does it fail to
+
+124
+00:07:36,177 --> 00:07:37,420
+explain?

@@ -1,0 +1,223 @@
+[Script Info]
+Title: RAHASYA - Voynich Manuscript V2
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 1920
+PlayResY: 1080
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,DejaVu Sans,50,&H00FFFFFF,&H000000FF,&H00101010,&H58000000,-1,0,0,0,100,100,0,0,3,1.4,0,2,160,160,58,1
+Style: Brand,DejaVu Sans,25,&H003ACDFF,&H000000FF,&H00101010,&H00000000,-1,0,0,0,100,100,2,0,1,2,0,7,55,55,35,1
+Style: Source,DejaVu Sans,20,&H00D1D7DE,&H000000FF,&H00101010,&H42000000,0,0,0,0,100,100,1,0,3,1,0,9,55,55,38,1
+Style: Main,DejaVu Sans,76,&H00FFFFFF,&H000000FF,&H00101010,&H00000000,-1,0,0,0,100,100,0,0,1,4,1,5,100,100,0,1
+Style: Chapter,DejaVu Sans,35,&H003ACDFF,&H000000FF,&H00101010,&H46000000,-1,0,0,0,100,100,2,0,3,1,0,8,100,100,64,1
+Style: Callout,DejaVu Sans,36,&H00FFFFFF,&H000000FF,&H00101010,&H6C000000,-1,0,0,0,100,100,1,0,3,1.5,0,4,70,70,0,1
+Style: Credit,DejaVu Sans,23,&H00D5DAE0,&H000000FF,&H00101010,&H52000000,0,0,0,0,100,100,0,0,3,1,0,8,60,60,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 1,0:00:00.02,0:00:03.91,Caption,,0,0,0,,Three facts make this book almost\Nimpossible to dismiss.
+Dialogue: 1,0:00:03.96,0:00:07.95,Caption,,0,0,0,,First: its parchment was made more than six\Ncenturies ago.
+Dialogue: 1,0:00:08.00,0:00:12.38,Caption,,0,0,0,,Second: at least five different people\Nappear to have written it.
+Dialogue: 1,0:00:12.43,0:00:16.32,Caption,,0,0,0,,Third: after generations of cryptographers,\Nlinguists, historians,
+Dialogue: 1,0:00:16.37,0:00:19.59,Caption,,0,0,0,,and computer scientists, no one can read a\Nsingle page with
+Dialogue: 1,0:00:19.64,0:00:23.24,Caption,,0,0,0,,scholarly agreement. Inside Yale's Beinecke\NLibrary, the object is
+Dialogue: 1,0:00:23.29,0:00:27.07,Caption,,0,0,0,,cataloged simply as Manuscript 408. Its two\Nhundred thirty-four pages
+Dialogue: 1,0:00:27.12,0:00:31.00,Caption,,0,0,0,,contain impossible plants, rotating skies,\Nhuman figures, and thousands
+Dialogue: 1,0:00:31.05,0:00:34.21,Caption,,0,0,0,,of words in an alphabet found nowhere else.
+Dialogue: 1,0:00:34.26,0:00:37.26,Caption,,0,0,0,,If it is a cipher, the key has vanished.
+Dialogue: 1,0:00:37.31,0:00:40.80,Caption,,0,0,0,,If it is a language, every known speaker is\Ngone.
+Dialogue: 1,0:00:40.85,0:00:44.63,Caption,,0,0,0,,And if it is a hoax, someone invested\Nextraordinary time, skill,
+Dialogue: 1,0:00:44.68,0:00:47.45,Caption,,0,0,0,,and money to create a lie that has survived\Nfor six
+Dialogue: 1,0:00:47.50,0:00:51.28,Caption,,0,0,0,,hundred years. This is not the story of a\Nsolved code.
+Dialogue: 1,0:00:51.33,0:00:54.93,Caption,,0,0,0,,It is the evidence behind the book no one\Ncan read.
+Dialogue: 1,0:00:54.98,0:00:57.80,Caption,,0,0,0,,Begin with the object, not the theories.
+Dialogue: 1,0:00:57.85,0:01:01.14,Caption,,0,0,0,,The Voynich Manuscript is a small parchment\Ncodex, about nine by
+Dialogue: 1,0:01:01.19,0:01:04.80,Caption,,0,0,0,,six inches. Radiocarbon analysis of four\Nsamples dated its animal-skin
+Dialogue: 1,0:01:04.85,0:01:07.20,Caption,,0,0,0,,pages to between 1404 and 1438.
+Dialogue: 1,0:01:07.25,0:01:11.01,Caption,,0,0,0,,Its inks and pigments use materials\Ncompatible with historical manuscript
+Dialogue: 1,0:01:11.06,0:01:14.76,Caption,,0,0,0,,production. Important distinction:\Nradiocarbon dates the parchment,
+Dialogue: 1,0:01:14.81,0:01:17.58,Caption,,0,0,0,,not each stroke of ink. By itself, it\Ncannot prove the
+Dialogue: 1,0:01:17.63,0:01:20.04,Caption,,0,0,0,,exact day the writing was added.
+Dialogue: 1,0:01:20.09,0:01:23.79,Caption,,0,0,0,,But together with the book's physical\Nconstruction, pigments, wear,
+Dialogue: 1,0:01:23.84,0:01:27.45,Caption,,0,0,0,,and later ownership record, the evidence\Nstrongly supports a genuinely
+Dialogue: 1,0:01:27.50,0:01:30.79,Caption,,0,0,0,,medieval codex. Then paleographer Lisa\NFagin Davis examined tiny
+Dialogue: 1,0:01:30.84,0:01:35.17,Caption,,0,0,0,,differences in the handwriting: how glyphs\Nlean, connect, and repeat.
+Dialogue: 1,0:01:35.22,0:01:38.25,Caption,,0,0,0,,Her conclusion was not one scribe, but\Nfive.
+Dialogue: 1,0:01:38.30,0:01:41.02,Caption,,0,0,0,,That changes the scale of the mystery.
+Dialogue: 1,0:01:41.07,0:01:44.67,Caption,,0,0,0,,Several people seem to have learned the\Nsame unfamiliar writing system
+Dialogue: 1,0:01:44.72,0:01:47.59,Caption,,0,0,0,,and coordinated a large illustrated book.
+Dialogue: 1,0:01:47.64,0:01:50.31,Caption,,0,0,0,,We still do not know what they wrote.
+Dialogue: 1,0:01:50.36,0:01:52.97,Caption,,0,0,0,,But we know this was organized work.
+Dialogue: 1,0:01:53.02,0:01:57.51,Caption,,0,0,0,,Open the manuscript and it divides into six\Nvisual worlds.
+Dialogue: 1,0:01:57.56,0:02:00.92,Caption,,0,0,0,,The largest section resembles an herbal.
+Dialogue: 1,0:02:00.97,0:02:04.84,Caption,,0,0,0,,Each page presents a plant, but many roots,\Nleaves, and flowers
+Dialogue: 1,0:02:04.89,0:02:09.25,Caption,,0,0,0,,resist reliable identification. Next come\Nastronomical and astrological
+Dialogue: 1,0:02:09.30,0:02:13.30,Caption,,0,0,0,,pages: suns, stars, zodiac-like rings, and\Ncircular diagrams that
+Dialogue: 1,0:02:13.35,0:02:17.52,Caption,,0,0,0,,almost resemble calendars. A third section\Nshows small human figures
+Dialogue: 1,0:02:17.57,0:02:21.13,Caption,,0,0,0,,linked by pools, pipes, and flowing shapes.
+Dialogue: 1,0:02:21.18,0:02:25.54,Caption,,0,0,0,,Curators call it biological or\Nbalneological—connected with bathing—but
+Dialogue: 1,0:02:25.59,0:02:29.58,Caption,,0,0,0,,that label describes the imagery, not its\Nmeaning.
+Dialogue: 1,0:02:29.63,0:02:33.93,Caption,,0,0,0,,Cosmological foldouts expand into elaborate\Nmedallions.
+Dialogue: 1,0:02:33.98,0:02:38.78,Caption,,0,0,0,,Pharmaceutical pages pair plant parts with\Nvessel-like objects.
+Dialogue: 1,0:02:38.83,0:02:42.58,Caption,,0,0,0,,The final pages look like short recipes,\Neach entry marked by
+Dialogue: 1,0:02:42.63,0:02:47.92,Caption,,0,0,0,,a star-shaped flower. Every image feels one\Nstep away from recognition.
+Dialogue: 1,0:02:47.97,0:02:51.71,Caption,,0,0,0,,That is the trap. A plant can look\Nmedicinal without matching
+Dialogue: 1,0:02:51.76,0:02:55.76,Caption,,0,0,0,,a species. A circle can look astronomical\Nwithout mapping a known
+Dialogue: 1,0:02:55.81,0:02:59.73,Caption,,0,0,0,,sky. Because the labels cannot be read,\Npictures cannot securely
+Dialogue: 1,0:02:59.78,0:03:04.96,Caption,,0,0,0,,explain the words—and the words cannot\Nsecurely explain the pictures.
+Dialogue: 1,0:03:05.01,0:03:08.58,Caption,,0,0,0,,The ownership trail begins in imperial\NPrague.
+Dialogue: 1,0:03:08.63,0:03:12.85,Caption,,0,0,0,,Yale identifies Holy Roman Emperor Rudolf\Nthe Second as the manuscript's
+Dialogue: 1,0:03:12.90,0:03:16.82,Caption,,0,0,0,,first confirmed owner. A surviving account\Nsays he paid six hundred
+Dialogue: 1,0:03:16.87,0:03:20.20,Caption,,0,0,0,,gold ducats and believed the work might be\Nby the English
+Dialogue: 1,0:03:20.25,0:03:24.12,Caption,,0,0,0,,thinker Roger Bacon. Modern scholarship\Ntreats that attribution as
+Dialogue: 1,0:03:24.17,0:03:28.15,Caption,,0,0,0,,speculation. The book later passed through\Nthe library of pharmacist
+Dialogue: 1,0:03:28.20,0:03:32.90,Caption,,0,0,0,,Jacobus de Tepenec and then to Prague\Nalchemist Georgius Baresch.
+Dialogue: 1,0:03:32.95,0:03:36.82,Caption,,0,0,0,,Baresch called it a riddle and asked the\Ncelebrated Jesuit scholar
+Dialogue: 1,0:03:36.87,0:03:40.61,Caption,,0,0,0,,Athanasius Kircher for help. In 1666,\NJohannes Marcus Marci sent
+Dialogue: 1,0:03:40.66,0:03:44.35,Caption,,0,0,0,,the manuscript to Kircher in Rome with a\Nletter still preserved
+Dialogue: 1,0:03:44.40,0:03:48.15,Caption,,0,0,0,,inside it. Then, silence. For more than two\Ncenturies, the trail
+Dialogue: 1,0:03:48.20,0:03:52.18,Caption,,0,0,0,,becomes uncertain. In 1912, Polish-American\Nrare-book dealer Wilfrid
+Dialogue: 1,0:03:52.23,0:03:56.22,Caption,,0,0,0,,Voynich purchased it from a Jesuit college\Nnear Rome.
+Dialogue: 1,0:03:56.27,0:04:00.55,Caption,,0,0,0,,The mystery took his name. After passing\Nthrough later owners, bookseller
+Dialogue: 1,0:04:00.60,0:04:03.75,Caption,,0,0,0,,H. P. Kraus donated it to Yale in 1969.
+Dialogue: 1,0:04:03.80,0:04:08.20,Caption,,0,0,0,,Today every page is online. Access is no\Nlonger the problem.
+Dialogue: 1,0:04:08.25,0:04:10.16,Caption,,0,0,0,,Interpretation is.
+Dialogue: 1,0:04:10.21,0:04:13.92,Caption,,0,0,0,,Look closely and the writing is not random\Nscribbling.
+Dialogue: 1,0:04:13.97,0:04:16.31,Caption,,0,0,0,,It runs mainly left to right.
+Dialogue: 1,0:04:16.36,0:04:20.01,Caption,,0,0,0,,Glyphs form repeated word-like units. Some\Nforms favor the beginning
+Dialogue: 1,0:04:20.06,0:04:23.72,Caption,,0,0,0,,of a line; others cluster near certain\Nillustrations.
+Dialogue: 1,0:04:23.77,0:04:27.04,Caption,,0,0,0,,Neighboring words can differ by only one\Nsign.
+Dialogue: 1,0:04:27.09,0:04:31.01,Caption,,0,0,0,,Researchers have tested frequency,\Nrepetition, entropy, and relationships
+Dialogue: 1,0:04:31.06,0:04:34.55,Caption,,0,0,0,,between sections. Some results resemble\Npatterns found in natural
+Dialogue: 1,0:04:34.60,0:04:39.07,Caption,,0,0,0,,language. That sounds like a\Nbreakthrough—until the caution arrives.
+Dialogue: 1,0:04:39.12,0:04:42.28,Caption,,0,0,0,,A cipher can preserve statistical\Nstructure.
+Dialogue: 1,0:04:42.33,0:04:44.78,Caption,,0,0,0,,A lost shorthand can create it.
+Dialogue: 1,0:04:44.83,0:04:48.38,Caption,,0,0,0,,A specially designed notation system can\Ncreate it.
+Dialogue: 1,0:04:48.43,0:04:52.30,Caption,,0,0,0,,Even an algorithm for generating\Nmeaningless text can produce convincing
+Dialogue: 1,0:04:52.35,0:04:56.49,Caption,,0,0,0,,repetition. And because some glyphs are\Nambiguous, changing the transcription
+Dialogue: 1,0:04:56.54,0:05:00.25,Caption,,0,0,0,,can change the statistics. Linguists Claire\NBowern and Luke Lindemann
+Dialogue: 1,0:05:00.30,0:05:03.95,Caption,,0,0,0,,reviewed this evidence and reached a\Ncareful conclusion: computation
+Dialogue: 1,0:05:04.00,0:05:07.27,Caption,,0,0,0,,can eliminate weak ideas and reveal\Nstructure, but it has not
+Dialogue: 1,0:05:07.32,0:05:10.81,Caption,,0,0,0,,established one accepted language or\Ndecipherment.
+Dialogue: 1,0:05:10.86,0:05:13.69,Caption,,0,0,0,,Patterns prove that there is a system.
+Dialogue: 1,0:05:13.74,0:05:16.85,Caption,,0,0,0,,They do not yet prove what the system says.
+Dialogue: 1,0:05:16.90,0:05:20.26,Caption,,0,0,0,,Four broad explanations remain in\Ncontention.
+Dialogue: 1,0:05:20.31,0:05:24.52,Caption,,0,0,0,,Theory one: an ordinary language hidden by\Nsubstitution, abbreviation,
+Dialogue: 1,0:05:24.57,0:05:28.44,Caption,,0,0,0,,or a complex cipher. The regularity\Nfits—but no proposed key produces
+Dialogue: 1,0:05:28.49,0:05:31.96,Caption,,0,0,0,,a coherent reading across the whole\Nmanuscript.
+Dialogue: 1,0:05:32.01,0:05:35.65,Caption,,0,0,0,,Theory two: a lost shorthand or invented\Nalphabet.
+Dialogue: 1,0:05:35.70,0:05:39.28,Caption,,0,0,0,,This could explain why the text looks\Nlinguistic while resisting
+Dialogue: 1,0:05:39.33,0:05:43.15,Caption,,0,0,0,,familiar scripts. Without a parallel text,\Nit is extremely difficult
+Dialogue: 1,0:05:43.20,0:05:46.78,Caption,,0,0,0,,to test. Theory three: a constructed\Nnotation meaningful only to
+Dialogue: 1,0:05:46.83,0:05:50.98,Caption,,0,0,0,,a small community—perhaps medical,\Nreligious, or scholarly.
+Dialogue: 1,0:05:51.03,0:05:54.73,Caption,,0,0,0,,Five scribal hands make a shared convention\Nplausible, but they do
+Dialogue: 1,0:05:54.78,0:05:58.71,Caption,,0,0,0,,not reveal its purpose. Theory four: an\Nelaborate hoax.
+Dialogue: 1,0:05:58.76,0:06:02.46,Caption,,0,0,0,,Experiments show that rule-based nonsense\Ncan imitate some Voynich
+Dialogue: 1,0:06:02.51,0:06:06.60,Caption,,0,0,0,,statistics. But “meaningless” does not\Nexplain the costly parchment,
+Dialogue: 1,0:06:06.65,0:06:10.80,Caption,,0,0,0,,sustained artwork, multiple writers, or the\Nintended buyer.
+Dialogue: 1,0:06:10.85,0:06:14.84,Caption,,0,0,0,,A hoax would still be a remarkable\Norganized production.
+Dialogue: 1,0:06:14.89,0:06:18.87,Caption,,0,0,0,,Each theory explains one clue and collides\Nwith another.
+Dialogue: 1,0:06:18.92,0:06:22.50,Caption,,0,0,0,,Cipher explains secrecy, but not the\Nmissing key.
+Dialogue: 1,0:06:22.55,0:06:25.97,Caption,,0,0,0,,Language explains structure, but not\Nidentity.
+Dialogue: 1,0:06:26.02,0:06:28.92,Caption,,0,0,0,,Hoax explains failure—but not effort.
+Dialogue: 1,0:06:28.97,0:06:32.38,Caption,,0,0,0,,Artificial intelligence has now joined the\Nhunt, comparing glyph
+Dialogue: 1,0:06:32.43,0:06:36.00,Caption,,0,0,0,,sequences and candidate languages at\Nenormous scale.
+Dialogue: 1,0:06:36.05,0:06:39.41,Caption,,0,0,0,,It can find similarities no person would\Nnotice.
+Dialogue: 1,0:06:39.46,0:06:43.35,Caption,,0,0,0,,It can also force a dramatic answer from a\Nbad assumption.
+Dialogue: 1,0:06:43.40,0:06:46.81,Caption,,0,0,0,,A real solution needs more than a viral\Nheadline.
+Dialogue: 1,0:06:46.86,0:06:50.27,Caption,,0,0,0,,The method must be reproducible. The\Ngrammar and vocabulary must
+Dialogue: 1,0:06:50.32,0:06:54.16,Caption,,0,0,0,,make historical sense. And the same key\Nmust produce consistent readings
+Dialogue: 1,0:06:54.21,0:06:58.11,Caption,,0,0,0,,across botanical pages, circular diagrams,\Nand plain text.
+Dialogue: 1,0:06:58.16,0:07:02.70,Caption,,0,0,0,,No public claim has yet crossed that\Nthreshold to scholarly consensus.
+Dialogue: 1,0:07:02.75,0:07:06.70,Caption,,0,0,0,,Perhaps the missing key survives in an\Nuncataloged archive.
+Dialogue: 1,0:07:06.75,0:07:10.75,Caption,,0,0,0,,Perhaps this is a writing system with no\Nsurviving relative.
+Dialogue: 1,0:07:10.80,0:07:14.16,Caption,,0,0,0,,Or perhaps the manuscript was designed to\Ncreate the feeling of
+Dialogue: 1,0:07:14.21,0:07:17.94,Caption,,0,0,0,,meaning without ever surrendering it. Here\Nis what the evidence allows
+Dialogue: 1,0:07:17.99,0:07:21.56,Caption,,0,0,0,,us to say: the Voynich Manuscript is a\Ngenuine medieval codex,
+Dialogue: 1,0:07:21.61,0:07:25.24,Caption,,0,0,0,,produced by multiple hands, filled with an\Nunidentified script whose
+Dialogue: 1,0:07:25.29,0:07:29.23,Caption,,0,0,0,,meaning remains unresolved. The pages are\Nopen to everyone.
+Dialogue: 1,0:07:29.28,0:07:32.91,Caption,,0,0,0,,The answer is not. This is RAHASYA: Global\NMysteries.
+Dialogue: 1,0:07:32.96,0:07:36.15,Caption,,0,0,0,,Which theory best fits the evidence—and\Nwhat does it fail to
+Dialogue: 1,0:07:36.20,0:07:37.40,Caption,,0,0,0,,explain?
+Dialogue: 2,0:00:00.20,0:07:36.42,Brand,,0,0,0,,{\fad(350,600)}RAHASYA
+Dialogue: 2,0:00:00.12,0:00:02.80,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:00:05.62,0:00:08.30,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:11.11,0:00:13.79,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:00:16.61,0:00:19.29,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:22.10,0:00:24.78,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:27.60,0:00:30.28,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:33.09,0:00:35.77,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:38.59,0:00:41.27,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:00:44.09,0:00:46.77,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:00:49.58,0:00:52.26,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:00:55.08,0:00:57.76,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:01.52,0:01:04.20,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:01:07.97,0:01:10.65,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:14.42,0:01:17.10,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:20.87,0:01:23.55,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:27.32,0:01:30.00,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:01:33.77,0:01:36.45,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:40.22,0:01:42.90,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:01:46.66,0:01:49.34,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:01:53.11,0:01:55.79,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:02:00.31,0:02:02.99,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:07.51,0:02:10.19,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:02:14.71,0:02:17.39,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:21.91,0:02:24.59,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:02:29.11,0:02:31.79,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:36.31,0:02:38.99,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:43.50,0:02:46.18,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:50.70,0:02:53.38,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:02:57.90,0:03:00.58,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:03:05.10,0:03:07.78,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:03:12.35,0:03:15.03,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:19.59,0:03:22.27,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:26.84,0:03:29.52,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:34.08,0:03:36.76,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:41.32,0:03:44.00,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:48.57,0:03:51.25,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:03:55.81,0:03:58.49,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:04:03.06,0:04:05.74,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:04:10.30,0:04:12.98,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:04:17.71,0:04:20.39,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:04:25.12,0:04:27.80,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:04:32.53,0:04:35.21,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:04:39.95,0:04:42.63,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:04:47.36,0:04:50.04,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:04:54.77,0:04:57.45,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:05:02.18,0:05:04.86,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:05:09.59,0:05:12.27,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:05:17.00,0:05:19.68,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:05:24.20,0:05:26.88,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:05:31.41,0:05:34.09,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:05:38.62,0:05:41.30,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:05:45.82,0:05:48.50,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:05:53.03,0:05:55.71,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:06:00.24,0:06:02.92,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:06:07.45,0:06:10.13,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:06:14.65,0:06:17.33,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:06:21.86,0:06:24.54,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:06:29.07,0:06:31.75,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:06:36.68,0:06:39.36,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:06:44.28,0:06:46.96,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:06:51.89,0:06:54.57,Source,,0,0,0,,{\fad(180,350)}ANALYTICAL VISUALIZATION
+Dialogue: 2,0:06:59.50,0:07:02.18,Source,,0,0,0,,{\fad(180,350)}SOURCE IMAGE  •  YALE LIBRARY
+Dialogue: 2,0:07:07.11,0:07:09.79,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:07:14.72,0:07:17.40,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 2,0:07:22.32,0:07:25.00,Source,,0,0,0,,{\fad(180,350)}EDITORIAL EVIDENCE GRAPHIC
+Dialogue: 2,0:07:29.93,0:07:32.61,Source,,0,0,0,,{\fad(180,350)}ORIGINAL DRAMATIZED VISUAL
+Dialogue: 3,0:00:00.45,0:00:08.20,Main,,0,0,0,,{\fad(450,650)}THE BOOK NO ONE CAN READ\N{\fs39\c&H003ACDFF&}THE VOYNICH MANUSCRIPT
+Dialogue: 3,0:00:55.50,0:01:00.00,Chapter,,0,0,0,,{\fad(300,500)}01  /  WHAT THE OBJECT PROVES
+Dialogue: 3,0:01:53.50,0:01:58.00,Chapter,,0,0,0,,{\fad(300,500)}02  /  SIX WORLDS INSIDE ONE BOOK
+Dialogue: 3,0:03:05.50,0:03:10.00,Chapter,,0,0,0,,{\fad(300,500)}03  /  THE TRAIL THROUGH EUROPE
+Dialogue: 3,0:04:10.70,0:04:15.20,Chapter,,0,0,0,,{\fad(300,500)}04  /  DOES IT BEHAVE LIKE LANGUAGE?
+Dialogue: 3,0:05:17.40,0:05:21.90,Chapter,,0,0,0,,{\fad(300,500)}05  /  FOUR THEORIES ENTER
+Dialogue: 3,0:06:29.40,0:06:33.90,Chapter,,0,0,0,,{\fad(300,500)}06  /  WHAT COUNTS AS A SOLUTION?
+Dialogue: 3,0:00:08.00,0:00:13.50,Callout,,0,0,0,,{\an4\pos(85,765)\fad(250,400)\c&H003ACDFF&}FACT 01\N{\fs55\c&H00FFFFFF&}MEDIEVAL PARCHMENT
+Dialogue: 3,0:00:13.60,0:00:19.00,Callout,,0,0,0,,{\an4\pos(85,765)\fad(250,400)\c&H003ACDFF&}FACT 02\N{\fs55\c&H00FFFFFF&}FIVE SCRIBAL HANDS
+Dialogue: 3,0:00:19.10,0:00:24.40,Callout,,0,0,0,,{\an4\pos(85,765)\fad(250,400)\c&H003ACDFF&}FACT 03\N{\fs55\c&H00FFFFFF&}ZERO ACCEPTED READINGS
+Dialogue: 3,0:07:25.00,0:07:36.80,Credit,,0,0,0,,{\fad(400,900)}RESEARCH: YALE LIBRARY + PEER-REVIEWED SCHOLARSHIP  •  ORIGINAL DRAMATIZED VISUALS

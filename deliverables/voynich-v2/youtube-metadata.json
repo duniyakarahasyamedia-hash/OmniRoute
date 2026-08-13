@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "channel": "RAHASYA: Global Mysteries",
+  "locale": "en-US",
+  "title": "The Voynich Manuscript: The Book No One Can Read",
+  "alternateTitles": [
+    "No One Can Read This 600-Year-Old Book",
+    "Voynich Manuscript: 600 Years Without an Answer",
+    "AI Tried to Decode the Voynich Manuscript. It Failed."
+  ],
+  "descriptionFile": "youtube-package.md",
+  "categoryId": "27",
+  "defaultPrivacyStatus": "private",
+  "madeForKids": false,
+  "containsSyntheticHistoricalReconstructions": true,
+  "tags": [
+    "voynich manuscript",
+    "voynich manuscript decoded",
+    "voynich manuscript mystery",
+    "mysterious book",
+    "book no one can read",
+    "unsolved mysteries",
+    "medieval manuscript",
+    "medieval mystery",
+    "yale beinecke",
+    "Beinecke MS 408",
+    "ancient cipher",
+    "unknown language",
+    "code breaking",
+    "cryptography",
+    "historical mystery",
+    "AI decipherment",
+    "Lisa Fagin Davis",
+    "five scribes",
+    "Rahasya Global",
+    "global mysteries",
+    "documentary",
+    "mystery documentary"
+  ],
+  "chapters": [
+    { "start": "00:00", "title": "Three facts that change the mystery" },
+    { "start": "00:55", "title": "What the physical object proves" },
+    { "start": "01:53", "title": "Six visual worlds inside one book" },
+    { "start": "03:05", "title": "The trail from Prague to Yale" },
+    { "start": "04:10", "title": "Does the text behave like language?" },
+    { "start": "05:17", "title": "Four theories enter" },
+    { "start": "06:29", "title": "What would count as a real solution?" }
+  ],
+  "assets": {
+    "uploadMaster": "voynich-manuscript-v2.mp4",
+    "mobileReview": "voynich-v2-mobile-compatible.mp4",
+    "thumbnail": "youtube-thumbnail.jpg",
+    "captions": "captions.srt"
+  }
+}

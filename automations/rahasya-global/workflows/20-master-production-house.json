@@ -1,0 +1,1053 @@
+{
+  "name": "RAHASYA | 20 Master Production House",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "n8nUserAuth",
+        "requireExecuteAccess": true,
+        "formTitle": "RAHASYA Production Brief",
+        "formDescription": "Internal greenlight intake for a US-English Global Mysteries documentary. Submission starts research and six mandatory human gates.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Mystery or Topic",
+              "fieldName": "topic",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Why Now / Timely Angle",
+              "fieldName": "why_now",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Target Audience",
+              "fieldName": "target_audience",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Target Duration (minutes)",
+              "fieldName": "target_duration",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Editorial Priority",
+              "fieldName": "priority",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Evergreen authority"
+                  },
+                  {
+                    "option": "Timely discovery"
+                  },
+                  {
+                    "option": "Tentpole investigation"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Source Leads",
+              "fieldName": "source_leads",
+              "fieldType": "textarea",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Creative / Legal Constraints",
+              "fieldName": "constraints",
+              "fieldType": "textarea",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Desired Release Date",
+              "fieldName": "due_date",
+              "fieldType": "date",
+              "requiredField": false
+            }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Open Production",
+          "path": "rahasya-production-brief",
+          "includeUserInOutput": true
+        }
+      },
+      "id": "5d16dcc5-13f6-53b0-aa5a-c9d8df895c6c",
+      "name": "Authenticated Production Brief",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [0, 0],
+      "webhookId": "4b045a95-c712-5053-bb20-74b54fba0648"
+    },
+    {
+      "parameters": {
+        "jsCode": "const form = $json;\nconst topic = String(form.topic || form['Mystery or Topic'] || '').trim();\nif (topic.length < 5 || topic.length > 300) throw new Error('Topic must be between 5 and 300 characters');\nconst duration = Number(form.target_duration || form['Target Duration (minutes)']);\nif (!Number.isFinite(duration) || duration < 4 || duration > 90) throw new Error('Target duration must be between 4 and 90 minutes');\nconst id = `RHM-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;\nconst project = {\n  schema_version: 1, id, channel_key: 'rahasya-global', channel_name: 'RAHASYA: Global Mysteries',\n  channel_url: 'https://www.youtube.com/@RahasyaGlobal', market: 'US', language: 'en-US', timezone: 'America/New_York',\n  created_at: new Date().toISOString(), status: 'in_production', current_stage: 'intake',\n  brief: { topic, why_now: String(form.why_now || form['Why Now / Timely Angle'] || ''), target_audience: String(form.target_audience || form['Target Audience'] || ''), target_duration_minutes: duration, priority: String(form.priority || form['Editorial Priority'] || ''), source_leads: String(form.source_leads || form['Source Leads'] || ''), constraints: String(form.constraints || form['Creative / Legal Constraints'] || ''), desired_release_date: String(form.due_date || form['Desired Release Date'] || '') },\n  outputs: {}, approvals: {}, cost_items: [],\n  last_event: { event_key: `${id}:created`, event_type: 'project_created', stage: 'intake', payload: { source: 'authenticated_form' } },\n};\nreturn [{ json: { project } }];"
+      },
+      "id": "e3a1619e-e668-58fb-91a0-de842dfe55a0",
+      "name": "Initialize Production Project",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_PREFLIGHT_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "383bcc25-2fc0-5d64-a198-98bcbcc9dbe6",
+      "name": "Run Infrastructure Readiness",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "df519e93-387a-5ffe-a5ee-3009ba346db9",
+      "name": "Persist Intake",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STRATEGY_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a4385fe5-03cf-5337-bc11-fd134ea280fc",
+      "name": "Run Trends & Growth",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_PRODUCER_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9636c869-37f4-5dee-8d30-e77d84cf4e6e",
+      "name": "Run Executive Producer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"concept\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"growth_strategy\", \"executive_producer\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Greenlight only a truthful, differentiated concept with a clear viewer promise, viable production scope, and measurable growth thesis.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "5a5286a9-c05f-5ada-b0a1-f66ccc765de9",
+      "name": "Prepare Concept Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "591170fe-1102-59a3-bdd3-b2c38a55ef0e",
+      "name": "Human Gate 1 — Concept",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "8d4b4c9e-f4b7-5b0d-a3ae-c1dfe12f3b21",
+      "name": "Persist Concept Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_RESEARCH_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9c010b7c-9aa0-5c27-982c-429e8b359e9b",
+      "name": "Run Investigative Research",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_FACTS_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "32d50359-0fdf-582e-b769-7dfc38bc1fee",
+      "name": "Run Fact Checker",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"research_facts\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"research\", \"fact_check\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Verify claim-to-source mappings, caveats, counter-evidence, privacy and defamation risks. Reject if key assertions lack traceable evidence.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "b3388f9a-ff7f-5ef2-b6a8-127fcacd9ad8",
+      "name": "Prepare Research & Facts Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "6844672f-17b4-54c4-8042-8e796526b0b8",
+      "name": "Human Gate 2 — Research & Facts",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [2640, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "31a77c45-61eb-59d5-adb2-92ed9cc3996e",
+      "name": "Persist Research Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [2860, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_WRITER_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a39c9a50-361b-564b-bd1e-a1b323f3e100",
+      "name": "Run Documentary Writer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [3080, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_RETENTION_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "23699021-8094-5fd7-91a5-91c790b7340d",
+      "name": "Run Retention Editor",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [3300, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"script\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"script\", \"retention_edit\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Read the complete revised script. Confirm originality, factual fidelity, tone, hook, payoff structure, citations, and non-misleading calls to action.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "929eac89-ddc8-5217-8591-284b500c6dad",
+      "name": "Prepare Script Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3520, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f64e9638-baaf-51c1-a297-0a5732ad5074",
+      "name": "Human Gate 3 — Script",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [3740, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a6671235-9356-5c4c-8105-fdf0c0ccc711",
+      "name": "Persist Script Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [3960, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_DIRECTOR_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "845d7eed-9d92-51ba-9854-7966baecc9ff",
+      "name": "Run Director",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [4180, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_VISUALS_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "c084d4a1-7db9-592f-b58b-8e7446b2a77e",
+      "name": "Run Cinematographer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [4400, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_RIGHTS_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "80f54ff1-4c05-5056-80cf-d65749a4fe5a",
+      "name": "Run Rights Producer",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [4620, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_VOICE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "ef630a28-7039-5552-8608-f135c28145d5",
+      "name": "Run Voice & Sound",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [4840, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"production_rights\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"direction\", \"visual_plan\", \"rights\", \"voice_sound\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Approve the director's treatment, shot and sound plans, and asset provenance. Unresolved or blocked assets cannot proceed.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "24439d91-6bd9-5578-9c22-92cf6a2541c2",
+      "name": "Prepare Production & Rights Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5060, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "4633ea54-e300-509f-8638-9523cd7e390f",
+      "name": "Human Gate 4 — Production & Rights",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [5280, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "5d644228-913f-5a06-95eb-7c5b2b3bc787",
+      "name": "Persist Production Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [5500, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_RENDER_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "e3aa0171-b8f7-5dd2-85bf-29c56caa8385",
+      "name": "Render Final Cut",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [5720, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_PACKAGING_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "5c79024f-dd3f-56c4-8b55-7b7ca93b8d8c",
+      "name": "Run Packaging & Thumbnail",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [5940, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"final_cut_packaging\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"packaging\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Watch the rendered video and inspect title, description, tags, sources and 1280x720 thumbnail. Confirm audio, captions, pacing, factual graphics and package accuracy.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "2d9621ae-791f-5c43-9c57-d643eb57530b",
+      "name": "Prepare Final Cut & Packaging Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6160, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "68e33fb1-9f56-5041-89b6-4eb73aca1fbf",
+      "name": "Human Gate 5 — Final Cut & Packaging",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [6380, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "108fe8d9-20e0-5d79-babe-eb305e5c8dab",
+      "name": "Persist Final Cut Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [6600, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_COMPLIANCE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "979acea8-4fe2-5e0e-b5b0-1aeccbeff6cb",
+      "name": "Run Compliance Editor",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [6820, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Project context is missing before approval');\nconst gate = \"disclosure_privacy\";\nif (gate === 'production_rights') {\n  const assets = project.outputs?.rights?.rights_manifest;\n  if (!Array.isArray(assets) || !assets.length) throw new Error('Rights gate blocked: rights manifest is empty');\n  const allowed = new Set(['cleared', 'original', 'licensed', 'public_domain']);\n  const unresolved = assets.filter(asset => !allowed.has(String(asset?.clearance_status || '').toLowerCase()));\n  if (unresolved.length) throw new Error(`Rights gate blocked: ${unresolved.length} asset(s) lack an allowed clearance status`);\n  const untraceable = assets.filter(asset => !String(asset?.asset_key || asset?.asset_reference || '').trim() || (String(asset.clearance_status).toLowerCase() !== 'original' && !String(asset?.source_url || '').trim()));\n  if (untraceable.length) throw new Error(`Rights gate blocked: ${untraceable.length} asset(s) lack an identity or source URL`);\n}\nif (gate === 'disclosure_privacy' && project.outputs?.compliance?.release_verdict === 'block') throw new Error('Compliance editor blocked release');\nconst selection = {};\nfor (const key of [\"compliance\", \"packaging\"]) selection[key] = project.outputs?.[key] ?? null;\nif (gate === 'final_cut_packaging') selection.render = project.render;\nproject.approval_request = { gate, instructions: \"Final release authority: verify YouTube policy, copyright, privacy, made-for-kids status and altered-content disclosure. Select privacy, notifications, schedule and synthetic-media declaration on the form.\", summary: JSON.stringify(selection, null, 2).slice(0, 18000) };\nreturn [{ json: { project }, ...($binary ? { binary: $binary } : {}) }];"
+      },
+      "id": "d15a6b30-2779-516c-a72d-ed32f740f8dd",
+      "name": "Prepare Disclosure & Privacy Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7040, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_APPROVAL_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "90612283-5461-5466-8db7-98fa90097906",
+      "name": "Human Gate 6 — Disclosure & Privacy",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [7260, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_STATE_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "e2f2b1d5-8188-544c-a77a-d096afa22de5",
+      "name": "Persist Release Gate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [7480, 0]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__WORKFLOW_PUBLISH_ID__",
+          "mode": "list"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9bd55c51-caab-57d7-af71-616bc5332f62",
+      "name": "Publish to YouTube",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [7700, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project || $json;\nreturn [{ json: { project_id: project.id, status: project.status, youtube: project.youtube, total_recorded_cost_usd: (project.cost_items || []).reduce((sum, item) => sum + Number(item.cost_usd || 0), 0) } }];"
+      },
+      "id": "6cb4803b-1de7-5a5d-bb60-9b570e6ff963",
+      "name": "Production Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7920, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Authenticated Production Brief": {
+      "main": [
+        [
+          {
+            "node": "Initialize Production Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Production Project": {
+      "main": [
+        [
+          {
+            "node": "Run Infrastructure Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Infrastructure Readiness": {
+      "main": [
+        [
+          {
+            "node": "Persist Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Intake": {
+      "main": [
+        [
+          {
+            "node": "Run Trends & Growth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Trends & Growth": {
+      "main": [
+        [
+          {
+            "node": "Run Executive Producer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Executive Producer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Concept Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Concept Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 1 — Concept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 1 — Concept": {
+      "main": [
+        [
+          {
+            "node": "Persist Concept Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Concept Gate": {
+      "main": [
+        [
+          {
+            "node": "Run Investigative Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Investigative Research": {
+      "main": [
+        [
+          {
+            "node": "Run Fact Checker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Fact Checker": {
+      "main": [
+        [
+          {
+            "node": "Prepare Research & Facts Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Research & Facts Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 2 — Research & Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 2 — Research & Facts": {
+      "main": [
+        [
+          {
+            "node": "Persist Research Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Research Gate": {
+      "main": [
+        [
+          {
+            "node": "Run Documentary Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Documentary Writer": {
+      "main": [
+        [
+          {
+            "node": "Run Retention Editor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Retention Editor": {
+      "main": [
+        [
+          {
+            "node": "Prepare Script Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Script Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 3 — Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 3 — Script": {
+      "main": [
+        [
+          {
+            "node": "Persist Script Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Script Gate": {
+      "main": [
+        [
+          {
+            "node": "Run Director",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Director": {
+      "main": [
+        [
+          {
+            "node": "Run Cinematographer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Cinematographer": {
+      "main": [
+        [
+          {
+            "node": "Run Rights Producer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Rights Producer": {
+      "main": [
+        [
+          {
+            "node": "Run Voice & Sound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Voice & Sound": {
+      "main": [
+        [
+          {
+            "node": "Prepare Production & Rights Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Production & Rights Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 4 — Production & Rights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 4 — Production & Rights": {
+      "main": [
+        [
+          {
+            "node": "Persist Production Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Production Gate": {
+      "main": [
+        [
+          {
+            "node": "Render Final Cut",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Final Cut": {
+      "main": [
+        [
+          {
+            "node": "Run Packaging & Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Packaging & Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Prepare Final Cut & Packaging Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Final Cut & Packaging Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 5 — Final Cut & Packaging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 5 — Final Cut & Packaging": {
+      "main": [
+        [
+          {
+            "node": "Persist Final Cut Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Final Cut Gate": {
+      "main": [
+        [
+          {
+            "node": "Run Compliance Editor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Compliance Editor": {
+      "main": [
+        [
+          {
+            "node": "Prepare Disclosure & Privacy Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Disclosure & Privacy Gate": {
+      "main": [
+        [
+          {
+            "node": "Human Gate 6 — Disclosure & Privacy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Gate 6 — Disclosure & Privacy": {
+      "main": [
+        [
+          {
+            "node": "Persist Release Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Release Gate": {
+      "main": [
+        [
+          {
+            "node": "Publish to YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to YouTube": {
+      "main": [
+        [
+          {
+            "node": "Production Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/New_York",
+    "saveExecutionProgress": true
+  },
+  "tags": []
+}

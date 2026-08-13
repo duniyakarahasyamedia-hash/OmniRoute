@@ -1,0 +1,334 @@
+{
+  "name": "RAHASYA | 12 MoneyPrinterTurbo Renderer",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "9267c9cf-215f-5ba8-ba2c-67a9b910246d",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $json.project;\nif (!project?.id) throw new Error('Renderer requires a valid project');\nconst script = project.outputs?.retention_edit?.revised_script || project.outputs?.script?.script;\nif (!script || script.length < 500) throw new Error('Approved script is missing or too short');\nconst visual = project.outputs?.visual_plan || {};\nconst sound = project.outputs?.voice_sound || {};\nconst title = project.outputs?.executive_producer?.working_title || project.brief.topic;\nconst terms = Array.isArray(visual.b_roll_search_terms) ? visual.b_roll_search_terms : [project.brief.topic];\nconst requestBody = {\n  video_subject: title, video_script: script, video_terms: terms,\n  video_aspect: '16:9', video_count: 1, video_language: 'en-US',\n  video_source: 'pexels', match_materials_to_script: true,\n  video_concat_mode: 'sequential', video_transition_mode: 'FadeIn', video_clip_duration: 5,\n  voice_name: sound.mpt_voice_name || 'en-US-GuyNeural-Male', voice_rate: Number(sound.voice_rate || 1), voice_volume: 1,\n  bgm_type: 'random', bgm_volume: 0.12, video_music_prompt: sound.music_direction || 'restrained cinematic mystery documentary score',\n  subtitle_enabled: true, subtitle_position: 'bottom', font_size: 54,\n  text_fore_color: '#FFFFFF', stroke_color: '#000000', stroke_width: 2,\n  paragraph_number: 1, n_threads: 2,\n};\nreturn [{ json: { project, requestBody } }];"
+      },
+      "id": "51d06cb2-6a36-5eb2-8ac7-e906c274b889",
+      "name": "Prepare Render Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "__MONEYPRINTER_BASE_URL__/api/v1/videos",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {}
+      },
+      "id": "f0cd8088-60d5-51b9-aad9-3b77f5f3e7c3",
+      "name": "Create MoneyPrinterTurbo Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Render Request').first().json;\nconst taskId = $json?.data?.task_id;\nif (!taskId) throw new Error('MoneyPrinterTurbo did not return a task ID');\nprepared.project.render = { task_id: taskId, state: 4, created_at: new Date().toISOString() };\nreturn [{ json: { project: prepared.project } }];"
+      },
+      "id": "2ac7c421-cf4b-5ae3-aeee-80a304fce627",
+      "name": "Capture Render Task",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 30,
+        "unit": "seconds",
+        "options": {}
+      },
+      "id": "b8d4677c-400f-5e43-bb07-e817e9807555",
+      "name": "Wait Before Polling",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ '__MONEYPRINTER_BASE_URL__/api/v1/tasks/' + $json.project.render.task_id }}",
+        "options": {}
+      },
+      "id": "4aa12c3a-0fa5-51b1-b472-c4b95418293e",
+      "name": "Poll Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const project = $('Capture Render Task').first().json.project;\nconst response = $json?.data ?? $json;\nconst state = Number(response?.state);\nif (![4, 1, -1].includes(state)) throw new Error('MoneyPrinterTurbo returned an unknown task state');\nproject.render = { ...project.render, state, progress: response?.progress ?? null, error: state === -1 ? String(response?.error || response?.message || 'Render failed') : null };\nif (state === 1) {\n  const candidates = response.combined_videos || response.videos || [];\n  const value = Array.isArray(candidates) ? candidates[0] : candidates;\n  if (!value) throw new Error('Completed render has no video output');\n  project.render.video_url = /^https?:\\/\\//i.test(value) ? value : `__MONEYPRINTER_BASE_URL__${String(value).startsWith('/') ? '' : '/'}${value}`;\n  project.render.completed_at = new Date().toISOString();\n  project.current_stage = 'render_complete';\n  project.last_event = { event_key: `${project.id}:render`, event_type: 'render_completed', stage: 'render', payload: { task_id: project.render.task_id, video_url: project.render.video_url } };\n}\nreturn [{ json: { project, state } }];"
+      },
+      "id": "2b1521c3-543f-5fa9-961b-38d23ee87b71",
+      "name": "Evaluate Render Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1cf18c5-300d-5286-9520-75e714ff6404",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": 4,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e43ecaa6-74d3-51fc-98d1-6657afc51080",
+      "name": "Still Processing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b0107a9c-dc37-5512-ba16-fe5d45e76cbf",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": -1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f9ebb592-46b5-5953-8861-629b575cb6d5",
+      "name": "Render Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1760, 100]
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ 'MoneyPrinterTurbo render failed: ' + $json.project.render.error }}"
+      },
+      "id": "b6acd105-a375-53d3-9e3f-947ef9b66333",
+      "name": "Stop Failed Render",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [1980, 220]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ '__MONEYPRINTER_BASE_URL__/tasks/' + $json.project.render.task_id + '/script.json' }}",
+        "options": {}
+      },
+      "id": "f2f4db17-5944-5ef6-863e-12d2a882e281",
+      "name": "Fetch Material Provenance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const completed = $('Evaluate Render Status').first().json;\nconst manifest = $json?.data ?? $json;\nconst sources = Array.isArray(manifest?.material_sources) ? manifest.material_sources : [];\nif (!sources.length) throw new Error('Render completed without material provenance; publication is blocked');\nfor (const source of sources) {\n  if (!source?.provider || !source?.asset_id || !source?.source_page) {\n    throw new Error('Render material provenance is incomplete; publication is blocked');\n  }\n}\ncompleted.project.render.material_sources = sources;\ncompleted.project.render.material_manifest_url = `__MONEYPRINTER_BASE_URL__/tasks/${completed.project.render.task_id}/script.json`;\ncompleted.project.last_event.payload.material_source_count = sources.length;\nreturn [{ json: completed }];"
+      },
+      "id": "22e71bf2-f6af-5d93-9340-b8573133cdc8",
+      "name": "Validate Material Provenance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "id": "ef374cee-9b4c-5250-8d4f-eec2f5264877",
+      "name": "Return Completed Render",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Render Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Render Request": {
+      "main": [
+        [
+          {
+            "node": "Create MoneyPrinterTurbo Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create MoneyPrinterTurbo Render": {
+      "main": [
+        [
+          {
+            "node": "Capture Render Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture Render Task": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Polling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Polling": {
+      "main": [
+        [
+          {
+            "node": "Poll Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Render Status": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Render Status": {
+      "main": [
+        [
+          {
+            "node": "Still Processing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still Processing?": {
+      "main": [
+        [
+          {
+            "node": "Wait Before Polling",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Render Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Failed?": {
+      "main": [
+        [
+          {
+            "node": "Stop Failed Render",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Material Provenance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Material Provenance": {
+      "main": [
+        [
+          {
+            "node": "Validate Material Provenance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Material Provenance": {
+      "main": [
+        [
+          {
+            "node": "Return Completed Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/New_York"
+  },
+  "tags": []
+}
