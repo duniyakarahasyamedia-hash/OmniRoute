@@ -47,7 +47,28 @@ consistent rakhe.
 3. Scene 2, 3, 4, 5 bhi same tarah banao (har ek ~8 sec)
 4. Saari clips ko naam do: `scene_01.mp4`, `scene_02.mp4` ... `scene_05.mp4`
 
-## Phir mere pipeline mein daal do (auto film ban jayegi — bina API key ke!)
+## ⚡ Sabse AASAAN tarika: drag-and-drop uploader (no folders, no commands)
+
+```bash
+cd ai-film-studio
+python3 setup.py                      # ek baar (deps install)
+
+# Windows:
+.venv\Scripts\python upload_film.py
+# Linux/Mac:
+.venv/bin/python upload_film.py
+```
+
+Phir browser mein kholo **http://localhost:8900** — wahan:
+1. Apne Veo clips ko **drag-drop** karo (jis order mein daaloge, usi order mein film banegi)
+2. Har scene ki **Hindi narration** likho (optional — khaali chhodo to sirf clips + music)
+3. **"🎬 Film Banao"** dabao → final.mp4 taiyaar → video player mein dekho + download karo
+
+> Ye koi folder/JSON/command ki zaroorat nahi rakhta. Sab kuch web page par hota hai.
+
+---
+
+## (Purana tarika) folders se — bina API key ke
 
 ```bash
 cd ai-film-studio

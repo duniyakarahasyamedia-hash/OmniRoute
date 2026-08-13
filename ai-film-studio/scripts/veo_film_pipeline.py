@@ -324,21 +324,25 @@ def _normalize_clip(clip: Path, aspect: str, dur: float, out_dir: Path, idx: int
 
 def assemble_final(
     clip_paths: list[Path],
-    voiceover: Path,
+    voiceover: Path | None,
     aspect: str,
     out_path: Path,
     work_dir: Path,
 ) -> Path:
-    """Concatenate clips, mux the voiceover, write final.mp4."""
+    """Concatenate clips, mux the voiceover (if any), write final.mp4."""
     work_dir.mkdir(parents=True, exist_ok=True)
     norm_dir = work_dir / "normalized"
     norm_dir.mkdir(exist_ok=True)
 
     # Trim each clip to its narration length so audio/video stay in sync.
+    # Without a voiceover, keep each clip's own full duration.
     normalized: list[Path] = []
-    audio_files = sorted(voiceover.parent.glob("scene_*.mp3"))
+    audio_files = sorted(voiceover.parent.glob("scene_*.mp3")) if voiceover else []
     for i, clip in enumerate(clip_paths, 1):
-        dur = _probe_duration(audio_files[i - 1]) if i - 1 < len(audio_files) else 8.0
+        if audio_files and i - 1 < len(audio_files):
+            dur = _probe_duration(audio_files[i - 1])
+        else:
+            dur = _probe_duration(clip)
         normalized.append(_normalize_clip(clip, aspect, dur, norm_dir, i))
 
     list_file = work_dir / "concat.txt"
@@ -363,24 +367,47 @@ def assemble_final(
     )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    _run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(video_only),
-            "-i",
-            str(voiceover),
-            "-c:v",
-            "copy",
-            "-c:a",
-            "aac",
-            "-shortest",
-            "-movflags",
-            "+faststart",
-            str(out_path),
-        ]
-    )
+    if voiceover and voiceover.exists():
+        _run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(video_only),
+                "-i",
+                str(voiceover),
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-shortest",
+                "-movflags",
+                "+faststart",
+                str(out_path),
+            ]
+        )
+    else:
+        # no voiceover: add a silent stereo audio track so every player accepts it
+        _run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(video_only),
+                "-f",
+                "lavfi",
+                "-i",
+                "anullsrc=channel_layout=stereo:sample_rate=44100",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-shortest",
+                "-movflags",
+                "+faststart",
+                str(out_path),
+            ]
+        )
     return out_path
 
 
@@ -532,13 +559,14 @@ def main(argv: list[str] | None = None) -> int:
             build_srt(scenes, audio_paths, out_dir / "subtitles.srt")
             print(f"      voiceover: {voiceover}")
 
-    if args.no_assemble or not clip_paths or not audio_paths:
-        print("[4/4] --no-assemble (or missing clips/audio): skipping final assembly.")
+    if args.no_assemble or not clip_paths:
+        print("[4/4] --no-assemble (or no clips): skipping final assembly.")
     else:
         print("[4/4] Assembling final.mp4 ...")
+        voiceover_file = out_dir / "audio" / "voiceover.m4a" if audio_paths else None
         final = assemble_final(
             clip_paths,
-            out_dir / "audio" / "voiceover.m4a",
+            voiceover_file,
             args.aspect,
             out_dir / "final.mp4",
             out_dir / "work",
