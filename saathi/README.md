@@ -1,31 +1,33 @@
-# Saathi Studio — YouTube Automation Master Agent
+# Saathi Studio — complete YouTube episode factory
 
-End-to-end YouTube desk: research → topics → script → packaging → thumbnails → voiceover → preview render → YouTube publish.
+One desk. You should not need another tool for the pack.
 
 ```bash
 cd saathi
 node server.js
 ```
 
-## Pipeline
+Click **Make complete episode**.
 
-1. Channel setup
-2. Market research + live YouTube search
-3. Topic lab (10 scored ideas, live titles mixed in)
-4. Deep research
-5. Script room
-6. Packaging + generated thumbnails
-7. Production kit + voiceover + preview video
-8. Upload pack + YouTube publish (private)
+That builds, locally:
 
-## Connections
+- channel + 10-min script
+- live YouTube search + Wikipedia facts + Wikimedia B-roll stills
+- studio / AI thumbnails
+- voiceover (or on-screen captions) mixed with an original music bed
+- full episode `.webm`
+- 3 vertical Shorts
+- `.srt` captions
+- ZIP of everything
 
-- **Local engine** — always on, no key
-- **Pollinations** — free text / image / audio from the browser
-- **Groq / Gemini / OpenAI / Claude / OpenRouter** — optional rewrite models
-- **YouTube Data API key** — live search
-- **Google OAuth Client ID** — upload video + thumbnail
+YouTube login is **only** if you want it posted. Then the same screen can:
 
-Redirect URI must be this exact page URL. Publish defaults to **private**.
+- publish private
+- schedule
+- add to playlist
+- upload captions
+- reply to comments
+- pull 28-day analytics
+- copy a community post (YouTube has no public community-post API)
 
-Click **Connect remaining** to wire live search, thumbs, VO, and preview in one pass.
+Redirect URI for OAuth is this exact page URL.

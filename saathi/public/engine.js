@@ -297,50 +297,73 @@ const YT = (() => {
     const lang = /hindi|hinglish/i.test(channel.language) ? "hinglish" : "en";
     const lines = [];
     const add = (t, who, text) => lines.push({ t, who, text });
+    const fact = research?.facts?.[0] || `${channel.audience} stay for numbers, not slogans.`;
+    const obj = research?.objections?.[0] || "I will start next month";
+    const live = research?.wiki?.[0]?.extract || "";
 
     if (lang === "hinglish") {
       add("0:00", "VO", hook);
-      add("0:18", "VO", `Main ${channel.name} hoon. Aaj ka topic: ${topic}. Promise simple hai — ek clear rule, ek number, ek next step.`);
-      add("0:42", "VO", `Pehle woh ghalat idea hataate hain jo ${channel.audience} roz sunte hain.`);
-      add("1:20", "VO", `Asli problem yeh nahi hai ke knowledge kam hai. Problem yeh hai ke system nahi hai.`);
-      add("2:10", "B-ROLL", `Show the ugly number. Pause. Let it sting.`);
-      add("2:40", "VO", `Ab teen hisse: kya ignore karna hai, kya measure karna hai, kya is hafte karna hai.`);
-      add("4:30", "VO", research.facts[0]);
-      add("6:00", "VO", `Common objection: “${research.objections[0]}.” Answer seedha hai — start smaller than your ego wants.`);
-      add("7:40", "VO", `Yahan log bounce karte hain. Isliye ab ek 7-day experiment, theory nahi.`);
-      add("9:10", "VO", `Day 1 measure. Day 2 cut one leak. Day 3 automate one transfer. Day 4 review with a human, not an app.`);
-      add("10:20", "VO", `Agar sirf ek cheez yaad rakhni hai: ${topic.toLowerCase()} ko feeling mat banao, usko rule banao.`);
-      add("10:50", "VO", `Agar yeh useful laga, next video us rule ko tumhare city ke numbers pe chalayenge. Subscribe if you want the system, not the hype.`);
+      add("0:20", "VO", `Main ${channel.name} hoon. Aaj sirf ${topic}. Promise: ek rule, ek number, ek 7-din ka experiment.`);
+      add("0:45", "VO", `Pehle popular lie. Log kehte hain knowledge kam hai. Asli problem system ki kami hai.`);
+      add("1:10", "B-ROLL", "Full-screen ugly number. Hold 3 seconds.");
+      add("1:20", "VO", `Yeh number isliye chubhta hai kyunki ${channel.audience} isi loop mein phanse hain.`);
+      add("1:50", "VO", `Ignore list: guru screenshots, overnight hacks, aur koi bhi line jisme guaranteed return ho.`);
+      add("2:20", "VO", `Measure list: ek weekly number, ek leak, ek automatic transfer. Bas teen.`);
+      add("2:50", "VO", fact);
+      if (live) add("3:20", "VO", `Context jo log skip karte hain: ${live.slice(0, 240)}`);
+      add("4:00", "VO", `Common objection: “${obj}.” Answer: start itna chhota rakho ke ego bore ho jaye.`);
+      add("4:30", "VO", `Metro vs tier-2: rent ratio alag hai, rule same hai. Pehle ratio, phir product.`);
+      add("5:05", "VO", `Ab system. Step 1 — naam do. Step 2 — date do. Step 3 — default banao taaki willpower na chahiye.`);
+      add("5:40", "B-ROLL", "Three cards: NAME / DATE / DEFAULT.");
+      add("5:50", "VO", `7-day experiment. Day 1 measure. Day 2 ek leak kaato. Day 3 ek transfer automate.`);
+      add("6:25", "VO", `Day 4 kisi insaan ko dikhao, app ko nahi. Day 5 wahi number dubara. Day 6 friction hatao. Day 7 rule likh ke fridge pe chipkao.`);
+      add("7:05", "VO", `Mid-video pause. Agar tumne ab tak koi number nahi likha, video band karke likho. Phir wapas aana.`);
+      add("7:35", "VO", `Do galti jo har ${channel.country} viewer karta hai: copy-paste US advice, aur family pressure ko plan samajh lena.`);
+      add("8:10", "VO", `Proof ka format: screenshot, calculator, ek before/after line. Story optional hai, math nahi.`);
+      add("8:40", "VO", `Monetization note: yeh education hai, guarantee nahi. ${channel.monetizationGoal}.`);
+      add("9:10", "VO", `Recap teen lafz mein: measure, cut, automate. ${topic.toLowerCase()} ko mood mat banao, rule banao.`);
+      add("9:40", "VO", `Agar yeh useful laga, next video isi rule ko tumhare city ke numbers pe chalayenge.`);
+      add("10:10", "VO", `Subscribe if you want the system. Skip if you want a guru. Comment: city + ek number.`);
+      add("10:35", "B-ROLL", "End screen: previous video + Start here playlist.");
     } else {
       add("0:00", "VO", hook);
-      add("0:18", "VO", `I'm ${channel.name}. Today: ${topic}. One rule, one number, one action.`);
-      add("0:42", "VO", `First we kill the popular lie.`);
-      add("2:10", "B-ROLL", `Put the ugly number on screen.`);
-      add("4:30", "VO", research.facts[0]);
-      add("7:40", "VO", `Now a 7-day experiment so this does not stay a video.`);
-      add("10:20", "VO", `Remember one thing: turn ${topic.toLowerCase()} into a rule, not a mood.`);
-      add("10:50", "VO", `Subscribe if you want systems. Skip if you want gurus.`);
+      add("0:20", "VO", `I'm ${channel.name}. Today: ${topic}. One rule, one number, one 7-day experiment.`);
+      add("0:45", "VO", `The popular lie is that you lack knowledge. You lack a system.`);
+      add("1:10", "B-ROLL", "Hold the ugly number.");
+      add("1:20", "VO", `This number hurts because ${channel.audience} already live inside it.`);
+      add("1:50", "VO", `Ignore list: guru screenshots, overnight hacks, any guaranteed return.`);
+      add("2:20", "VO", `Measure three things only: a weekly number, one leak, one automatic transfer.`);
+      add("2:50", "VO", fact);
+      if (live) add("3:20", "VO", `Context most videos skip: ${live.slice(0, 240)}`);
+      add("4:00", "VO", `Objection: “${obj}.” Start smaller than your ego wants.`);
+      add("4:30", "VO", `Metro or tier-2: the rent ratio changes. The rule does not.`);
+      add("5:05", "VO", `Name it. Date it. Default it so willpower is optional.`);
+      add("5:50", "VO", `7 days: measure, cut, automate, show a human, remeasure, remove friction, write the rule.`);
+      add("7:05", "VO", `If you have not written a number yet, pause. Write. Come back.`);
+      add("7:35", "VO", `Two ${channel.country} mistakes: imported advice, and treating family pressure as a plan.`);
+      add("8:10", "VO", `Proof is a screenshot and a calculator, not a speech.`);
+      add("8:40", "VO", `Education, not a guarantee. ${channel.monetizationGoal}.`);
+      add("9:10", "VO", `Recap: measure, cut, automate. Turn ${topic.toLowerCase()} into a rule.`);
+      add("10:10", "VO", `Subscribe for the system. Comment your city and one number.`);
     }
 
-    const spoken = lines
-      .filter((l) => l.who === "VO")
-      .map((l) => l.text)
-      .join(" ");
-    const words = spoken.split(/\s+/).length;
+    const spoken = lines.filter((l) => l.who === "VO").map((l) => l.text).join(" ");
     return {
       hook,
       lengthTarget: `${mins} min`,
-      wordCount: words,
+      wordCount: spoken.split(/\s+/).length,
       chapters: [
         { t: "0:00", title: "The ugly open" },
-        { t: "0:40", title: "The lie" },
-        { t: "2:10", title: "The number" },
-        { t: "4:20", title: "The system" },
-        { t: "7:30", title: "7-day experiment" },
-        { t: "10:20", title: "One rule to keep" },
+        { t: "0:45", title: "The lie" },
+        { t: "1:10", title: "The number" },
+        { t: "2:20", title: "What to measure" },
+        { t: "5:05", title: "The system" },
+        { t: "5:50", title: "7-day experiment" },
+        { t: "7:35", title: "Local mistakes" },
+        { t: "9:10", title: "Recap + CTA" },
       ],
       lines,
-      cta: "Subscribe for the next city-specific breakdown. Comment your take-home band if you want the calculator version.",
+      cta: "Comment your city + one number. Next video runs this rule on real local math.",
     };
   }
 

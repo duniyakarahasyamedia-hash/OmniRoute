@@ -51,7 +51,23 @@ function loadStudio() {
 }
 
 function slimMedia(media) {
-  if (!media) return { thumbs: [], selectedThumb: null, voices: [], previewUrl: "", previewName: "", ytVideoId: "", liveVideos: [] };
+  if (!media) {
+    return {
+      thumbs: [],
+      selectedThumb: null,
+      voices: [],
+      previewUrl: "",
+      previewName: "",
+      ytVideoId: "",
+      liveVideos: [],
+      shorts: [],
+      srt: "",
+      wiki: [],
+      comments: [],
+      analytics: null,
+      playlistId: "",
+    };
+  }
   return {
     thumbs: (media.thumbs || []).filter((t) => t.src && !String(t.src).startsWith("blob:")),
     selectedThumb: media.selectedThumb || null,
@@ -60,6 +76,12 @@ function slimMedia(media) {
     previewName: media.previewName || "",
     ytVideoId: media.ytVideoId || "",
     liveVideos: media.liveVideos || [],
+    shorts: [],
+    srt: media.srt || "",
+    wiki: media.wiki || [],
+    comments: media.comments || [],
+    analytics: media.analytics || null,
+    playlistId: media.playlistId || "",
   };
 }
 
@@ -296,10 +318,19 @@ function viewTopics(p) {
 function viewDeep(p) {
   const d = p?.deep;
   if (!d) return `<div class="card"><button class="btn-red" data-act="goto" data-stage="deep">Run deep research</button></div>`;
+  const wiki = p.media?.wiki || [];
   return `<div class="row"><h2 style="margin:0 0 10px">Deep research</h2>
+      <button data-act="wiki-facts">Pull live facts</button>
       <button class="btn-red" data-act="goto" data-stage="script">Write script</button></div>
+    ${
+      wiki.length
+        ? `<div class="card" style="margin-bottom:10px"><h3>Wikipedia</h3>${wiki
+            .map((w) => `<p><b>${escapeHtml(w.title)}</b> — ${escapeHtml(w.extract.slice(0, 280))}</p>`)
+            .join("")}</div>`
+        : ""
+    }
     <div class="grid-2">
-      <div class="card"><h3>Facts</h3><div class="pre">${d.facts.map((x) => "• " + x).join("\n")}</div></div>
+      <div class="card"><h3>Facts</h3><div class="pre">${d.facts.map((x) => "• " + escapeHtml(x)).join("\n")}</div></div>
       <div class="card"><h3>Stakes</h3><p>${escapeHtml(d.stakes)}</p></div>
       <div class="card"><h3>Sources to pull</h3><div class="pre">${d.sources.map((x) => "• " + x).join("\n")}</div></div>
       <div class="card"><h3>Objections</h3><div class="pre">${d.objections.map((x) => "• " + x).join("\n")}</div></div>
@@ -370,24 +401,40 @@ function viewUpload(p) {
   const u = p?.upload;
   if (!u) return `<div class="card"><button class="btn-red" data-act="goto" data-stage="upload">Build upload pack</button></div>`;
   return `<div class="row"><h2 style="margin:0 0 10px">Upload pack</h2>
-      <button data-act="render-preview">Render preview</button>
-      <button class="btn-red" data-act="yt-publish">Publish to YouTube</button>
-      <button data-act="export">Download full pack</button></div>
+      <button class="btn-red" data-act="make-complete">Make complete episode</button>
+      <button data-act="yt-publish">Publish private</button>
+      <button data-act="yt-schedule">Schedule</button>
+      <button data-act="yt-playlist">Add to playlist</button>
+      <button data-act="yt-captions">Upload captions</button>
+      <button data-act="yt-comments">Fetch + reply comments</button>
+      <button data-act="yt-analytics">Analytics</button>
+      <button data-act="copy-community">Copy community post</button>
+      <button data-act="download-zip">Download ZIP</button></div>
+    <label>Schedule (optional)</label>
+    <input id="publishAt" type="datetime-local" />
     ${
       p.media?.ytVideoId
-        ? `<div class="card" style="margin-bottom:10px"><h3>Published</h3><a href="https://youtu.be/${escapeHtml(p.media.ytVideoId)}" target="_blank" rel="noreferrer">https://youtu.be/${escapeHtml(p.media.ytVideoId)}</a></div>`
-        : `<div class="card" style="margin-bottom:10px"><span>${Tube.connected(state.settings) ? "YouTube connected. Render a preview, then publish as Private." : "Connect YouTube in the right rail to publish. Preview video still downloads locally."}</span></div>`
+        ? `<div class="card" style="margin:10px 0"><h3>Published</h3><a href="https://youtu.be/${escapeHtml(p.media.ytVideoId)}" target="_blank" rel="noreferrer">https://youtu.be/${escapeHtml(p.media.ytVideoId)}</a></div>`
+        : `<div class="card" style="margin:10px 0"><span>${Tube.connected(state.settings) ? "YouTube connected. Make complete episode, then publish." : "No login needed for the full local episode + ZIP. YouTube login is only for posting."}</span></div>`
     }
     ${p.media?.previewUrl ? `<video class="preview" controls src="${escapeHtml(p.media.previewUrl)}"></video>` : ""}
+    ${p.media?.analytics ? `<div class="card" style="margin-top:10px"><h3>28-day analytics</h3><pre class="pre">${escapeHtml(JSON.stringify(p.media.analytics, null, 2))}</pre></div>` : ""}
+    ${
+      (p.media?.comments || []).length
+        ? `<div class="card" style="margin-top:10px"><h3>Comments</h3>${p.media.comments
+            .map((c) => `<p><b>${escapeHtml(c.author || "")}</b> — ${escapeHtml(c.text || "")}</p>`)
+            .join("")}</div>`
+        : ""
+    }
     <div class="grid-2">
       <div class="card"><h3>File / playlist</h3>
         <p><b>${escapeHtml(u.filename)}</b></p>
         <p>${escapeHtml(u.playlist)}</p>
         <p>${escapeHtml(u.schedule)}</p>
       </div>
-      <div class="card"><h3>First hour</h3><div class="pre">${u.firstHour.map((x) => "• " + x).join("\n")}</div></div>
-      <div class="card"><h3>Shorts cutdowns</h3><div class="pre">${u.shortsCutdowns.map((x) => "• " + x).join("\n")}</div></div>
-      <div class="card"><h3>Compliance</h3><div class="pre">${u.compliance.map((x) => "☐ " + x).join("\n")}</div></div>
+      <div class="card"><h3>First hour</h3><div class="pre">${u.firstHour.map((x) => "• " + escapeHtml(x)).join("\n")}</div></div>
+      <div class="card"><h3>Shorts</h3><div class="pre">${u.shortsCutdowns.map((x) => "• " + escapeHtml(x)).join("\n")}</div></div>
+      <div class="card"><h3>Compliance</h3><div class="pre">${u.compliance.map((x) => "☐ " + escapeHtml(x)).join("\n")}</div></div>
     </div>
     <div class="card" style="margin-top:10px"><h3>Community post</h3><p>${escapeHtml(u.communityPost)}</p></div>`;
 }
@@ -466,6 +513,14 @@ function goto(stage) {
   setStatus("", `${YT.STAGES[target].label} ready`);
 }
 
+function autopilot(topicText) {
+  setStatus("thinking", "Producing full video system…");
+  const p = YT.produceAll(state.channel, topicText);
+  applyProject(p);
+  setStatus("", "Full pack ready");
+  return p;
+}
+
 function queryForSearch(p) {
   const ch = p?.channel || state.channel;
   return `${ch.niche} ${ch.country} ${ch.language} ${p?.selectedTopic?.topic || ch.subNiche || ""}`.trim();
@@ -490,10 +545,11 @@ async function genThumbs(p = project()) {
   setStatus("thinking", "Painting thumbnails…");
   const studio = MediaKit.studioThumbs(p);
   const ai = MediaKit.aiThumbUrls(p);
-  p.media.thumbs = [...studio, ...ai];
+  const stock = await Facts.stockStills(`${state.channel.country} ${state.channel.niche} street`).catch(() => []);
+  p.media.thumbs = [...studio, ...ai, ...stock];
   p.media.selectedThumb = studio[0].id;
   applyProject(p);
-  setStatus("", "Thumbnails ready — pick one");
+  setStatus("", "Thumbnails + stock B-roll ready");
 }
 
 async function genVoice(p = project()) {
@@ -535,11 +591,13 @@ async function publishYouTube() {
   if (!p.media?.previewBlob) await renderPreview(p);
   p = project();
   setStatus("thinking", "Uploading to YouTube…");
+  const publishAt = $("#publishAt")?.value ? new Date($("#publishAt").value).toISOString() : "";
   const meta = {
     title: p.pack?.titles?.[0] || p.title,
     description: p.pack?.description || "",
     tags: p.pack?.tags || [],
     privacy: "private",
+    publishAt,
   };
   const video = await Tube.uploadVideo(p.media.previewBlob, meta, state.settings);
   p.media.ytVideoId = video.id;
@@ -549,30 +607,93 @@ async function publishYouTube() {
       const blob = await MediaKit.dataUrlToBlob(thumb.src);
       await Tube.setThumbnail(video.id, blob, state.settings);
     } catch {
-      /* thumbnail optional */
+      /* optional */
     }
   }
   applyProject(p);
-  setStatus("", `Published privately · ${video.id}`);
+  setStatus("", publishAt ? `Scheduled · ${video.id}` : `Published privately · ${video.id}`);
+  return video;
 }
 
-async function connectRemaining() {
+async function pullWiki() {
+  let p = project();
+  if (!p) return;
+  setStatus("thinking", "Pulling Wikipedia facts…");
+  const wiki = await Facts.liveFacts(p.selectedTopic?.topic || p.title, p.channel.niche);
+  ensureMedia(p);
+  p.media.wiki = wiki;
+  if (p.deep && wiki[0]) p.deep.wiki = wiki;
+  applyProject(p);
+  setStatus("", wiki.length ? `${wiki.length} live facts` : "No wiki hits");
+}
+
+async function makeSrt() {
+  const p = project();
+  if (!p?.script) goto("script");
+  const cur = project();
+  ensureMedia(cur);
+  cur.media.srt = MediaKit.makeSrt(cur);
+  applyProject(cur);
+  setStatus("", "SRT ready");
+}
+
+async function renderShorts() {
+  let p = project();
+  if (!p?.script) goto("script");
+  p = project();
+  ensureMedia(p);
+  if (!p.media.thumbs?.length) await genThumbs(p);
+  p = project();
+  setStatus("thinking", "Rendering Shorts…");
+  p.media.shorts = await MediaKit.renderShorts(p, (n) => setStatus("thinking", `Shorts ${n}%`));
+  applyProject(p);
+  setStatus("", "3 Shorts ready");
+}
+
+async function downloadZip() {
+  const p = project();
+  if (!p) return;
+  const files = [{ name: `${p.upload?.filename || "episode"}.md`, blob: new Blob([exportMarkdown()], { type: "text/markdown" }) }];
+  if (p.media?.srt) files.push({ name: `${p.upload?.filename || "episode"}.srt`, blob: new Blob([p.media.srt], { type: "text/plain" }) });
+  if (p.media?.previewBlob) files.push({ name: p.media.previewName || "episode.webm", blob: p.media.previewBlob });
+  for (const s of p.media?.shorts || []) if (s.blob) files.push({ name: s.name, blob: s.blob });
+  const zip = await Zip.build(files);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(zip);
+  a.download = `${p.upload?.filename || "saathi-episode"}.zip`;
+  a.click();
+}
+
+async function makeCompleteEpisode() {
   saveChannelFromForm();
-  setStatus("thinking", "Connecting the full desk…");
+  setStatus("thinking", "Building the complete episode…");
   let p = project();
   if (!p?.upload) p = autopilot();
   await liveSearch(p);
+  await pullWiki();
   p = project();
-  if (p.research?.live?.length && p.topics?.length) {
+  if (p.deep) {
+    p.deep.wiki = p.media.wiki || [];
+    p.script = YT.writeScript(p.selectedTopic?.topic || p.title, p.channel, p.deep);
+    applyProject(p);
+  }
+  p = project();
+  if (p.research?.live?.length) {
     p.topics = YT.generateTopics(p.channel, p.research.live.map((v) => v.title));
-    if (!p.selectedTopic) p.selectedTopic = p.topics[0];
+    p.selectedTopic = p.selectedTopic || p.topics[0];
     applyProject(p);
   }
   await genThumbs(project());
   await genVoice(project());
+  await makeSrt();
   await renderPreview(project());
+  await renderShorts();
   goto("upload");
-  setStatus("", Tube.connected(state.settings) ? "Desk connected. Publish when ready." : "Media connected. Login YouTube to publish.");
+  setStatus("", "Complete episode ready — ZIP or publish. YouTube login only if you want it live.");
+}
+
+async function connectRemaining() {
+  return makeCompleteEpisode();
 }
 
 function exportMarkdown() {
@@ -867,6 +988,9 @@ function bind() {
     saveChannelFromForm();
     autopilot();
   });
+  $("#makeComplete")?.addEventListener("click", () => {
+    makeCompleteEpisode().catch((err) => setStatus("", err.message));
+  });
   $("#exportMd").addEventListener("click", downloadPack);
   $("#copyPack").addEventListener("click", async () => {
     const md = exportMarkdown();
@@ -921,9 +1045,76 @@ function bind() {
       const line = project()?.media?.voices?.[Number(btn.dataset.idx)];
       if (line?.text) MediaKit.speakLine(line.text);
     }
-    if (act === "render-preview") renderPreview();
-    if (act === "yt-publish") {
+    if (act === "render-preview") renderPreview().catch((err) => setStatus("", err.message));
+    if (act === "render-shorts") renderShorts().catch((err) => setStatus("", err.message));
+    if (act === "make-srt") makeSrt();
+    if (act === "wiki-facts") pullWiki();
+    if (act === "make-complete") makeCompleteEpisode().catch((err) => setStatus("", err.message));
+    if (act === "download-zip") downloadZip().catch((err) => setStatus("", err.message));
+    if (act === "copy-community") {
+      const text = project()?.upload?.communityPost || "";
+      navigator.clipboard.writeText(text);
+      if (state.settings.ytChannelId) {
+        window.open(`https://studio.youtube.com/channel/${state.settings.ytChannelId}/posts`, "_blank", "noopener");
+      }
+      setStatus("", "Community post copied");
+    }
+    if (act === "yt-publish" || act === "yt-schedule") {
       publishYouTube().catch((err) => setStatus("", err.message));
+    }
+    if (act === "yt-playlist") {
+      const p = project();
+      if (!p?.media?.ytVideoId) return setStatus("", "Publish first");
+      Tube.ensurePlaylist(p.upload?.playlist || "Start here", state.settings)
+        .then((id) => {
+          p.media.playlistId = id;
+          return Tube.addToPlaylist(id, p.media.ytVideoId, state.settings);
+        })
+        .then(() => {
+          applyProject(p);
+          setStatus("", "Added to playlist");
+        })
+        .catch((err) => setStatus("", err.message));
+    }
+    if (act === "yt-captions") {
+      const p = project();
+      if (!p?.media?.ytVideoId || !p.media.srt) return setStatus("", "Need video + SRT");
+      const lang = /hindi|hinglish/i.test(p.channel.language) ? "hi" : "en";
+      Tube.uploadCaptions(p.media.ytVideoId, p.media.srt, lang, state.settings)
+        .then(() => setStatus("", "Captions uploaded"))
+        .catch((err) => setStatus("", err.message));
+    }
+    if (act === "yt-comments") {
+      const p = project();
+      if (!p?.media?.ytVideoId) return setStatus("", "Publish first");
+      Tube.listComments(p.media.ytVideoId, state.settings)
+        .then(async (comments) => {
+          p.media.comments = comments;
+          const reply = p.pack?.pinned || "Thanks — drop your city + one number.";
+          for (const c of comments.slice(0, 3)) {
+            if (c.parentId) {
+              try {
+                await Tube.replyComment(c.parentId, reply, state.settings);
+              } catch {
+                /* skip */
+              }
+            }
+          }
+          applyProject(p);
+          setStatus("", `Replied to ${Math.min(3, comments.length)} comments`);
+        })
+        .catch((err) => setStatus("", err.message));
+    }
+    if (act === "yt-analytics") {
+      Tube.analytics(state.settings)
+        .then((data) => {
+          const p = project();
+          ensureMedia(p);
+          p.media.analytics = data.rows || data;
+          applyProject(p);
+          setStatus("", "Analytics loaded");
+        })
+        .catch((err) => setStatus("", err.message));
     }
   });
   $("#composer").addEventListener("submit", (e) => {

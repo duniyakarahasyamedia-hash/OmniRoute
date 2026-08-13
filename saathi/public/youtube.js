@@ -3,13 +3,10 @@ const Tube = (() => {
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/youtube.force-ssl",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
   ].join(" ");
 
-  const INVIDIOUS = [
-    "https://inv.nadeko.net",
-    "https://invidious.nerdvpn.de",
-    "https://yewtu.be",
-  ];
+  const INVIDIOUS = ["https://inv.nadeko.net", "https://invidious.nerdvpn.de", "https://yewtu.be"];
 
   function connected(settings) {
     return Boolean(settings.ytToken && Number(settings.ytExpires || 0) > Date.now() + 15_000);
@@ -38,13 +35,14 @@ const Tube = (() => {
   }
 
   async function api(path, settings, params = {}, init = {}) {
-    const url = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
+    const root = path.startsWith("http") ? path : `https://www.googleapis.com/youtube/v3/${path}`;
+    const url = new URL(root);
     Object.entries(params).forEach(([k, v]) => {
       if (v != null && v !== "") url.searchParams.set(k, v);
     });
     const headers = { ...(init.headers || {}) };
     if (connected(settings)) headers.Authorization = `Bearer ${settings.ytToken}`;
-    else if (settings.ytApiKey) url.searchParams.set("key", settings.ytApiKey);
+    else if (settings.ytApiKey && !path.startsWith("http")) url.searchParams.set("key", settings.ytApiKey);
     else throw new Error("YouTube API key or login required");
     const res = await fetch(url, { ...init, headers });
     const data = await res.json().catch(() => ({}));
@@ -109,7 +107,7 @@ const Tube = (() => {
           }));
         if (list.length) return list;
       } catch {
-        /* try next */
+        /* next */
       }
     }
     return [];
@@ -128,6 +126,11 @@ const Tube = (() => {
 
   async function uploadVideo(file, meta, settings, onProgress) {
     if (!connected(settings)) throw new Error("Connect YouTube first");
+    const status = {
+      privacyStatus: meta.publishAt ? "private" : meta.privacy || "private",
+      selfDeclaredMadeForKids: false,
+    };
+    if (meta.publishAt) status.publishAt = meta.publishAt;
     const init = await fetch(
       "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
       {
@@ -145,10 +148,7 @@ const Tube = (() => {
             tags: (meta.tags || []).slice(0, 15),
             categoryId: meta.categoryId || "27",
           },
-          status: {
-            privacyStatus: meta.privacy || "private",
-            selfDeclaredMadeForKids: false,
-          },
+          status,
         }),
       },
     );
@@ -174,7 +174,6 @@ const Tube = (() => {
   }
 
   async function setThumbnail(videoId, blob, settings) {
-    if (!connected(settings)) throw new Error("Connect YouTube first");
     const res = await fetch(
       `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}`,
       {
@@ -193,5 +192,115 @@ const Tube = (() => {
     return res.json();
   }
 
-  return { connected, consumeHash, connect, myChannel, search, uploadVideo, setThumbnail };
+  async function ensurePlaylist(title, settings) {
+    const list = await api("playlists", settings, { part: "snippet", mine: "true", maxResults: "25" });
+    const hit = (list.items || []).find((p) => p.snippet?.title === title);
+    if (hit) return hit.id;
+    const created = await api(
+      "playlists",
+      settings,
+      { part: "snippet,status" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          snippet: { title, description: "Saathi Studio start-here playlist" },
+          status: { privacyStatus: "public" },
+        }),
+      },
+    );
+    return created.id;
+  }
+
+  async function addToPlaylist(playlistId, videoId, settings) {
+    return api(
+      "playlistItems",
+      settings,
+      { part: "snippet" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          snippet: { playlistId, resourceId: { kind: "youtube#video", videoId } },
+        }),
+      },
+    );
+  }
+
+  async function uploadCaptions(videoId, srtText, language, settings) {
+    const boundary = "saathi" + Date.now();
+    const meta = JSON.stringify({
+      snippet: { videoId, language: language || "en", name: "Saathi captions", isDraft: false },
+    });
+    const body =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +
+      `--${boundary}\r\nContent-Type: text/plain\r\n\r\n${srtText}\r\n--${boundary}--`;
+    const res = await fetch("https://www.googleapis.com/upload/youtube/v3/captions?part=snippet&uploadType=multipart", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${settings.ytToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error?.message || `Captions ${res.status}`);
+    return data;
+  }
+
+  async function listComments(videoId, settings) {
+    const data = await api("commentThreads", settings, {
+      part: "snippet",
+      videoId,
+      maxResults: "8",
+      textFormat: "plainText",
+    });
+    return (data.items || []).map((it) => ({
+      id: it.id,
+      parentId: it.snippet?.topLevelComment?.id,
+      author: it.snippet?.topLevelComment?.snippet?.authorDisplayName,
+      text: it.snippet?.topLevelComment?.snippet?.textDisplay,
+    }));
+  }
+
+  async function replyComment(parentId, text, settings) {
+    return api(
+      "comments",
+      settings,
+      { part: "snippet" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snippet: { parentId, textOriginal: text } }),
+      },
+    );
+  }
+
+  async function analytics(settings) {
+    const end = new Date();
+    const start = new Date(Date.now() - 28 * 86400000);
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    return api("https://youtubeanalytics.googleapis.com/v2/reports", settings, {
+      ids: "channel==MINE",
+      startDate: fmt(start),
+      endDate: fmt(end),
+      metrics: "views,estimatedMinutesWatched,subscribersGained,likes",
+    });
+  }
+
+  return {
+    connected,
+    consumeHash,
+    connect,
+    myChannel,
+    search,
+    uploadVideo,
+    setThumbnail,
+    ensurePlaylist,
+    addToPlaylist,
+    uploadCaptions,
+    listComments,
+    replyComment,
+    analytics,
+  };
 })();

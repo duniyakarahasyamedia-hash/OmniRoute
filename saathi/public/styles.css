@@ -123,6 +123,7 @@ body {
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.grid-3 .preview { max-height: 280px; object-fit: cover; }
 .card {
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.03);
