@@ -3,116 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Saathi Studio — YouTube Automation Master</title>
-    <meta name="description" content="End-to-end YouTube production agent: research, topics, scripts, packaging, upload packs." />
+    <title>Saathi Studio — watching now</title>
     <link rel="icon" href="./avatar.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body>
-    <div class="app">
-      <aside class="panel nav">
-        <div class="brand">
-          <img src="./avatar.png" alt="Saathi Studio" />
-          <div>
-            <h1>Saathi Studio</h1>
-            <p>YouTube Master Agent</p>
-          </div>
-        </div>
-        <div class="row">
-          <button id="newVideo" class="btn-red">+ New video</button>
-          <button id="autoPilot">Decide for me</button>
-          <button id="makeComplete">Make complete episode</button>
-        </div>
-        <div class="section-title">Pipeline</div>
-        <div id="steps"></div>
-        <div class="section-title">Projects</div>
-        <div id="projects"></div>
-      </aside>
-
-      <main class="panel stage">
-        <header class="topbar">
-          <div class="identity">
-            <img src="./avatar.png" alt="" />
-            <div>
-              <strong>YouTube Automation Master</strong>
-              <div id="status" class="status"><i></i>Ready to produce</div>
-            </div>
-          </div>
-          <div class="row">
-            <button id="exportMd">Export pack</button>
-            <button id="copyPack">Copy</button>
-          </div>
-        </header>
-        <div class="cinema" id="cinema">
-          <img id="cinemaBg" src="./broll-1.png" alt="" />
-          <div class="cinema-shade"></div>
-          <div class="cinema-meta">
-            <span id="cinemaChannel">Rupee Radar</span>
-            <span id="cinemaClock">00:00</span>
-          </div>
-          <p id="cinemaLine">Episode start ho rahi hai… tum kuch mat dabaana.</p>
-        </div>
-        <form id="composer" class="composer">
-          <div class="box">
-            <textarea id="input" rows="1" placeholder="Direct the agent… e.g. “personal finance India, decide everything” or “write the script”"></textarea>
-            <button class="send" type="submit">Run</button>
-          </div>
-          <div class="hint">Local production engine is always on. Optional API key in the right rail upgrades open-ended rewrites.</div>
-        </form>
-      </main>
-
-      <aside class="panel rail">
-        <div class="section-title">YouTube connection</div>
-        <div class="card" id="ytCard">
-          <div id="ytStatus" class="active-model">Not connected</div>
-          <label>YouTube Data API key (search)</label>
-          <input id="ytApiKey" type="password" placeholder="AIza… optional" />
-          <label>OAuth Client ID (upload)</label>
-          <input id="ytClientId" placeholder="….apps.googleusercontent.com" />
-          <p class="hint">Google Cloud → YouTube Data API v3. Redirect: this exact page URL.</p>
-          <div class="row">
-            <button id="ytConnect" class="btn-red" type="button">Connect YouTube</button>
-            <button id="ytDisconnect" type="button">Disconnect</button>
-          </div>
-        </div>
-        <div class="section-title">Channel</div>
-        <div id="channelCard" class="card"></div>
-        <div class="section-title">Selected video</div>
-        <div id="videoCard" class="card"></div>
-        <div class="section-title">Models</div>
-        <div class="card">
-          <div id="activeModel" class="active-model">Local Engine</div>
-          <label>Provider</label>
-          <select id="settingsProvider">
-            <option value="auto">Auto (try free, then key)</option>
-            <option value="local">Built-in Local Engine</option>
-            <option value="pollinations">Pollinations — free, no key</option>
-            <option value="groq">Groq — free key</option>
-            <option value="gemini">Google Gemini — free key</option>
-            <option value="openai">OpenAI — paid</option>
-            <option value="anthropic">Anthropic Claude — paid</option>
-            <option value="openrouter">OpenRouter — mixed</option>
-          </select>
-          <label>Model</label>
-          <select id="settingsModel"></select>
-          <label>API key (Groq / Gemini / OpenAI / Claude / OpenRouter)</label>
-          <input id="settingsKey" type="password" placeholder="optional — local + Pollinations skip this" />
-          <p id="modelHint" class="hint"></p>
-          <button id="saveSettings" class="btn-red" type="button">Save model</button>
-        </div>
-        <div class="section-title">Catalog</div>
-        <div id="modelCatalog" class="model-catalog"></div>
-      </aside>
+  <body class="watch-body">
+    <div class="cinema cinema-full" id="cinema">
+      <img id="cinemaBg" class="kenburns" src="./broll-1.png" alt="episode" />
+      <video id="episodeVideo" playsinline autoplay muted></video>
+      <div class="cinema-shade"></div>
+      <div class="cinema-meta">
+        <span id="cinemaChannel">Rupee Radar · LIVE IN STUDIO</span>
+        <span id="cinemaClock">00:00</span>
+      </div>
+      <p id="cinemaLine">Video start ho rahi hai…</p>
+      <div class="cinema-bar"><i id="cinemaBar"></i></div>
     </div>
+    <div id="workspace" class="hidden"></div>
     <script src="./engine.js"></script>
     <script src="./models.js"></script>
     <script src="./youtube.js"></script>
     <script src="./media.js"></script>
     <script src="./facts.js"></script>
     <script src="./zip.js"></script>
-    <script src="./app.js"></script>
+    <script src="./player.js"></script>
   </body>
 </html>
