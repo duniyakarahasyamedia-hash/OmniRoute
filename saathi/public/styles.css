@@ -194,6 +194,43 @@ button:hover { border-color: rgba(255,45,45,0.45); }
 .kv { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 4px 0; }
 .kv span { color: var(--muted); }
 
+.active-model {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,45,45,0.12);
+  border: 1px solid rgba(255,45,45,0.3);
+  margin-bottom: 8px;
+}
+.model-catalog { display: flex; flex-direction: column; gap: 8px; }
+.model-group h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.model-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 8px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.model-chip:hover, .model-chip.on { border-color: rgba(255,45,45,0.45); background: rgba(255,45,45,0.08); }
+.model-chip small { color: var(--muted); display: block; }
+.badge {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 99px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.badge.free { background: rgba(62,224,176,0.15); color: var(--mint); }
+.badge.free-key { background: rgba(245,193,108,0.15); color: var(--gold); }
+.badge.paid { background: rgba(255,45,45,0.12); color: #ff8b8b; }
+
 @media (max-width: 1100px) {
   .app { grid-template-columns: 1fr; }
   .nav, .rail { display: none; }

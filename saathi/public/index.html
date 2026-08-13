@@ -60,26 +60,33 @@
         <div id="channelCard" class="card"></div>
         <div class="section-title">Selected video</div>
         <div id="videoCard" class="card"></div>
-        <div class="section-title">Model (optional)</div>
+        <div class="section-title">Models</div>
         <div class="card">
+          <div id="activeModel" class="active-model">Local Engine</div>
           <label>Provider</label>
           <select id="settingsProvider">
-            <option value="auto">Auto</option>
-            <option value="pollinations">Pollinations free</option>
-            <option value="groq">Groq</option>
-            <option value="openai">OpenAI</option>
-            <option value="openrouter">OpenRouter</option>
+            <option value="auto">Auto (try free, then key)</option>
+            <option value="local">Built-in Local Engine</option>
+            <option value="pollinations">Pollinations — free, no key</option>
+            <option value="groq">Groq — free key</option>
+            <option value="gemini">Google Gemini — free key</option>
+            <option value="openai">OpenAI — paid</option>
+            <option value="anthropic">Anthropic Claude — paid</option>
+            <option value="openrouter">OpenRouter — mixed</option>
           </select>
-          <label>API key</label>
-          <input id="settingsKey" type="password" placeholder="optional" />
           <label>Model</label>
-          <input id="settingsModel" placeholder="openai / llama-3.1-8b-instant" />
-          <div style="height:8px"></div>
+          <select id="settingsModel"></select>
+          <label>API key (Groq / Gemini / OpenAI / Claude / OpenRouter)</label>
+          <input id="settingsKey" type="password" placeholder="optional — local + Pollinations skip this" />
+          <p id="modelHint" class="hint"></p>
           <button id="saveSettings" class="btn-red" type="button">Save model</button>
         </div>
+        <div class="section-title">Catalog</div>
+        <div id="modelCatalog" class="model-catalog"></div>
       </aside>
     </div>
     <script src="./engine.js"></script>
+    <script src="./models.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

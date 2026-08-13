@@ -7,6 +7,13 @@ const STORE = {
 
 const DEFAULT_SETTINGS = { provider: "auto", apiKey: "", model: "openai" };
 
+function currentModelMeta() {
+  const id = state.settings.model;
+  const provider = state.settings.provider;
+  if (provider === "local" || id === "saathi-studio") return findModel("saathi-studio");
+  return modelsFor(provider).find((m) => m.id === id) || findModel(id);
+}
+
 let state = {
   settings: loadJson(STORE.settings, DEFAULT_SETTINGS),
   channel: loadJson("saathi.channel.v2", { ...YT.DEFAULT_CHANNEL }),
@@ -311,11 +318,45 @@ function viewUpload(p) {
     <div class="card" style="margin-top:10px"><h3>Community post</h3><p>${escapeHtml(u.communityPost)}</p></div>`;
 }
 
+function fillModelSelect() {
+  const provider = $("#settingsProvider").value;
+  const list = provider === "local" ? modelsFor("local") : modelsFor(provider);
+  const select = $("#settingsModel");
+  const current = state.settings.model;
+  select.innerHTML = list
+    .map((m) => `<option value="${escapeHtml(m.id)}" ${m.id === current ? "selected" : ""}>${escapeHtml(m.name)} — ${escapeHtml(m.use)}</option>`)
+    .join("");
+  if (!list.some((m) => m.id === select.value) && list[0]) select.value = list[0].id;
+  const pack = MODEL_CATALOG[provider === "auto" ? "pollinations" : provider] || MODEL_CATALOG.pollinations;
+  $("#modelHint").textContent = pack.hint || "";
+}
+
+function renderCatalog() {
+  const active = `${state.settings.provider}:${state.settings.model}`;
+  $("#modelCatalog").innerHTML = Object.entries(MODEL_CATALOG)
+    .map(([provider, pack]) => {
+      const chips = pack.models
+        .map((m) => {
+          const on = state.settings.provider === provider && state.settings.model === m.id;
+          return `<div class="model-chip ${on ? "on" : ""}" data-pick-provider="${provider}" data-pick-model="${escapeHtml(m.id)}">
+            <div><b>${escapeHtml(m.name)}</b><small>${escapeHtml(m.use)}</small></div>
+            <span class="badge ${m.tier}">${m.tier.replace("-", " ")}</span>
+          </div>`;
+        })
+        .join("");
+      return `<div class="model-group"><h4>${escapeHtml(pack.label)} · ${pack.key ? "key" : "no key"}</h4>${chips}</div>`;
+    })
+    .join("");
+  const meta = currentModelMeta();
+  $("#activeModel").textContent = `${meta.providerLabel || "Local"} · ${meta.name}`;
+}
+
 function renderAll() {
   renderSteps();
   renderProjects();
   renderRail();
   renderWorkspace();
+  renderCatalog();
 }
 
 function saveChannelFromForm() {
@@ -388,52 +429,83 @@ function downloadPack() {
   a.click();
 }
 
+async function postJson(url, headers, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`http ${res.status}`);
+  return res.json();
+}
+
+async function callOpenAI(url, key, model, messages) {
+  const data = await postJson(url, key ? { Authorization: `Bearer ${key}` } : {}, { model, messages, temperature: 0.6 });
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("empty");
+  return text.trim();
+}
+
+async function callAnthropic(key, model, messages) {
+  const system = messages.find((m) => m.role === "system")?.content || "";
+  const data = await postJson(
+    "https://api.anthropic.com/v1/messages",
+    { "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    {
+      model,
+      max_tokens: 1800,
+      system,
+      messages: messages.filter((m) => m.role !== "system"),
+    },
+  );
+  const text = data.content?.map((c) => c.text).filter(Boolean).join("\n");
+  if (!text) throw new Error("empty");
+  return text.trim();
+}
+
+async function callGemini(key, model, messages) {
+  const system = messages.find((m) => m.role === "system")?.content || "";
+  const contents = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+  const data = await postJson(url, {}, { systemInstruction: { parts: [{ text: system }] }, contents });
+  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join("");
+  if (!text) throw new Error("empty");
+  return text.trim();
+}
+
 async function callModel(userText) {
   const s = state.settings;
+  if (s.provider === "local" || s.model === "saathi-studio") return null;
   const messages = [
     { role: "system", content: YT.masterPrompt(state.channel, project()) },
     { role: "user", content: userText },
   ];
+  const meta = currentModelMeta();
   const attempts = [];
-  if (s.apiKey && (s.provider === "groq" || s.provider === "auto")) {
-    attempts.push({
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      headers: { Authorization: `Bearer ${s.apiKey}` },
-      body: { model: s.model || "llama-3.1-8b-instant", messages, temperature: 0.6 },
-    });
+
+  const push = (fn) => attempts.push(fn);
+  if (s.provider === "anthropic" && s.apiKey) push(() => callAnthropic(s.apiKey, s.model, messages));
+  if (s.provider === "gemini" && s.apiKey) push(() => callGemini(s.apiKey, s.model, messages));
+  if (s.provider === "groq" && s.apiKey) push(() => callOpenAI(MODEL_CATALOG.groq.url, s.apiKey, s.model, messages));
+  if (s.provider === "openai" && s.apiKey) push(() => callOpenAI(MODEL_CATALOG.openai.url, s.apiKey, s.model, messages));
+  if (s.provider === "openrouter" && s.apiKey) push(() => callOpenAI(MODEL_CATALOG.openrouter.url, s.apiKey, s.model, messages));
+  if (s.provider === "pollinations") push(() => callOpenAI(MODEL_CATALOG.pollinations.url, "", s.model || "openai", messages));
+
+  if (s.provider === "auto") {
+    if (s.apiKey) {
+      push(() => callOpenAI(MODEL_CATALOG.groq.url, s.apiKey, s.model.includes("/") || s.model.startsWith("llama") || s.model.includes("gemma") || s.model.includes("qwen") || s.model.includes("deepseek") || s.model.includes("kimi") || s.model.includes("gpt-oss") ? s.model : "llama-3.1-8b-instant", messages));
+      push(() => callGemini(s.apiKey, /gemini/.test(s.model) ? s.model : "gemini-2.0-flash", messages));
+      push(() => callOpenAI(MODEL_CATALOG.openrouter.url, s.apiKey, s.model, messages));
+    }
+    push(() => callOpenAI(MODEL_CATALOG.pollinations.url, "", meta?.provider === "pollinations" ? s.model : "openai", messages));
   }
-  if (s.apiKey && s.provider === "openai") {
-    attempts.push({
-      url: "https://api.openai.com/v1/chat/completions",
-      headers: { Authorization: `Bearer ${s.apiKey}` },
-      body: { model: s.model || "gpt-4o-mini", messages },
-    });
-  }
-  if (s.apiKey && s.provider === "openrouter") {
-    attempts.push({
-      url: "https://openrouter.ai/api/v1/chat/completions",
-      headers: { Authorization: `Bearer ${s.apiKey}` },
-      body: { model: s.model || "openai/gpt-4o-mini", messages },
-    });
-  }
-  if (s.provider === "auto" || s.provider === "pollinations") {
-    attempts.push({
-      url: "https://text.pollinations.ai/openai",
-      headers: {},
-      body: { model: s.model || "openai", messages },
-    });
-  }
+
   for (const attempt of attempts) {
     try {
-      const res = await fetch(attempt.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...attempt.headers },
-        body: JSON.stringify(attempt.body),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content;
-      if (text) return text.trim();
+      const text = await attempt();
+      if (text) return text;
     } catch {}
   }
   return null;
@@ -469,6 +541,12 @@ function localDirect(text) {
   if (/upload|publish/.test(lower)) {
     goto("upload");
     return "Upload pack ready: filename, playlist, shorts cutdowns, first-hour list.";
+  }
+  if (/model|llm|gpt|claude|gemini|groq|kaun sa model/.test(lower)) {
+    const list = allModels()
+      .map((m) => `• ${m.providerLabel}: ${m.name} (${m.tier}) — ${m.use}`)
+      .join("\n");
+    return `Yeh models add hain. Right rail se pick karo.\n\n${list}\n\nLocal Engine hamesha on hai. Pollinations free hai. Groq/Gemini ke liye free key. OpenAI/Claude paid.`;
   }
   if (/channel|setup|niche/.test(lower) && /save|set|change|naam|name/.test(lower) === false) {
     goto("setup");
@@ -528,9 +606,35 @@ function bind() {
 
   $("#settingsProvider").value = state.settings.provider || "auto";
   $("#settingsKey").value = state.settings.apiKey || "";
-  $("#settingsModel").value = state.settings.model || "";
+  fillModelSelect();
+  if (state.settings.model) $("#settingsModel").value = state.settings.model;
 
   renderAll();
+
+  $("#settingsProvider").addEventListener("change", () => {
+    state.settings.provider = $("#settingsProvider").value;
+    fillModelSelect();
+    state.settings.model = $("#settingsModel").value;
+    persist();
+    renderCatalog();
+  });
+  $("#settingsModel").addEventListener("change", () => {
+    state.settings.model = $("#settingsModel").value;
+    persist();
+    renderCatalog();
+  });
+  $("#modelCatalog").addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-pick-model]");
+    if (!chip) return;
+    state.settings.provider = chip.dataset.pickProvider;
+    state.settings.model = chip.dataset.pickModel;
+    $("#settingsProvider").value = state.settings.provider;
+    fillModelSelect();
+    $("#settingsModel").value = state.settings.model;
+    persist();
+    renderCatalog();
+    setStatus("", `${findModel(state.settings.model).name} selected`);
+  });
 
   $("#steps").addEventListener("click", (e) => {
     const step = e.target.closest("[data-stage]");
