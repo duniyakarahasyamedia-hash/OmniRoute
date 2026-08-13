@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Saathi Studio — watching now</title>
+    <link rel="icon" href="./avatar.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;700&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="watch-body">
+    <div class="cinema cinema-full" id="cinema">
+      <img id="cinemaBg" class="kenburns" src="./broll-1.png" alt="episode" />
+      <video id="episodeVideo" playsinline autoplay muted></video>
+      <div class="cinema-shade"></div>
+      <div class="cinema-meta">
+        <span id="cinemaChannel">Rupee Radar · LIVE IN STUDIO</span>
+        <span id="cinemaClock">00:00</span>
+      </div>
+      <p id="cinemaLine">Video start ho rahi hai…</p>
+      <div class="cinema-bar"><i id="cinemaBar"></i></div>
+    </div>
+    <div id="workspace" class="hidden"></div>
+    <script src="./engine.js"></script>
+    <script src="./models.js"></script>
+    <script src="./youtube.js"></script>
+    <script src="./media.js"></script>
+    <script src="./facts.js"></script>
+    <script src="./zip.js"></script>
+    <script src="./player.js"></script>
+  </body>
+</html>
