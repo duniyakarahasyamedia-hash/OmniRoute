@@ -1,0 +1,31 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "lib",
+        "outDir": "dist"
+    },
+    "references": [
+        {
+            "path": "../egress"
+        },
+        {
+            "path": "../feature-flags"
+        },
+        {
+            "path": "../utils"
+        },
+        {
+            "path": "../logs"
+        },
+        {
+            "path": "../types"
+        },
+        {
+            "path": "../kvstore"
+        },
+        {
+            "path": "../shared"
+        }
+    ],
+    "include": ["lib/**/*", "../utils/lib/vitest.d.ts"]
+}

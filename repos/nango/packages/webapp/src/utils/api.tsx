@@ -1,0 +1,115 @@
+import { toast } from 'sonner';
+
+import { globalEnv } from './env';
+
+import type { ApiError } from '@nangohq/types';
+
+export async function apiFetch(input: string | URL | Request, init?: RequestInit) {
+    return await fetch(new URL(input as string, globalEnv.apiUrl), {
+        ...init,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(init?.headers ? (init.headers as Record<string, string>) : {})
+        },
+        credentials: 'include' // For cookies
+    });
+}
+
+export async function publicApiFetch(
+    input: string | URL | Request,
+    { connectionId, providerConfigKey, secretKey }: { connectionId: string; providerConfigKey: string; secretKey: string },
+    init?: RequestInit
+) {
+    return await fetch(new URL(input as string, globalEnv.apiUrl), {
+        ...init,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(init?.headers ? (init.headers as Record<string, string>) : {}),
+            'Connection-Id': connectionId,
+            'Provider-Config-Key': providerConfigKey,
+            Authorization: `Bearer ${secretKey}`
+        }
+    });
+}
+
+export async function fetcher(...args: Parameters<typeof fetch>) {
+    const response = await apiFetch(...args);
+    return response.json();
+}
+
+/**
+ * A real Error subclass, not a plain object: Sentry fully serializes plain-object throws
+ * (leaking the API response body, which can contain PHI — NAN-6428) but only takes
+ * name/message/stack from Error instances. The message must stay payload-free.
+ */
+export class SWRError<TError> extends Error {
+    json: TError;
+    status: number;
+    constructor(json: TError, status: number) {
+        super(`http_error_${status}`);
+        this.name = 'SWRError';
+        this.json = json;
+        this.status = status;
+    }
+}
+/**
+ * Default SWR fetcher does not throw on HTTP error
+ */
+export async function swrFetcher<TBody>(url: string, req?: RequestInit): Promise<TBody> {
+    const res = await apiFetch(url, req);
+
+    if (!res.ok) {
+        throw new SWRError(await res.json(), res.status);
+    }
+
+    return await res.json();
+}
+
+export function requestErrorToast() {
+    toast.error('Request error...');
+}
+
+function serverErrorToast() {
+    toast.error('Server error...');
+}
+
+export function useHostedSigninAPI() {
+    return async () => {
+        try {
+            const res = await apiFetch('/api/v1/basic');
+
+            if (res.status !== 200 && res.status !== 401) {
+                serverErrorToast();
+                return;
+            }
+
+            return res;
+        } catch {
+            requestErrorToast();
+        }
+    };
+}
+
+export function useGetHmacAPI(env: string) {
+    return async (providerConfigKey: string, connectionId: string) => {
+        try {
+            const res = await apiFetch(`/api/v1/environment/hmac?env=${env}&connection_id=${connectionId}&provider_config_key=${providerConfigKey}`, {
+                method: 'GET'
+            });
+
+            return res;
+        } catch {
+            requestErrorToast();
+        }
+    };
+}
+
+export class APIError extends Error {
+    json;
+    res;
+    constructor({ res, json }: { res: Response; json: Record<string, any> | ApiError<any> }) {
+        super('api_error');
+        this.json = json;
+        this.res = res;
+    }
+}

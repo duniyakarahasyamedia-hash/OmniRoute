@@ -1,0 +1,575 @@
+import { uuidv4, uuidv7 } from 'uuidv7';
+
+import { Err, Ok, stringifyError, stringToHash } from '@nangohq/utils';
+
+import { defaultSchedulerConfig } from '../config.js';
+import { DuplicateTaskNameError } from '../errors.js';
+import { taskStates } from '../types.js';
+import * as groupOverrides from './groupOverrides.js';
+import { SCHEDULES_TABLE } from './schedules.js';
+
+import type { Task, TaskNonTerminalState, TaskState, TaskTerminalState } from '../types.js';
+import type { Result } from '@nangohq/utils';
+import type knex from 'knex';
+import type { JsonObject, JsonValue, SetOptional } from 'type-fest';
+
+export const TASKS_TABLE = 'tasks';
+const TASKS_INSERT_BATCH_SIZE = 1000;
+
+export type TaskProps = SetOptional<
+    Omit<Task, 'id' | 'createdAt' | 'state' | 'lastStateTransitionAt' | 'lastHeartbeatAt' | 'output' | 'terminated'>,
+    'retryKey'
+>;
+
+interface TaskStateTransition {
+    from: TaskState;
+    to: TaskState;
+}
+
+export const validTaskStateTransitions = [
+    { from: 'CREATED', to: 'STARTED' },
+    { from: 'CREATED', to: 'CANCELLED' },
+    { from: 'CREATED', to: 'EXPIRED' },
+    { from: 'STARTED', to: 'SUCCEEDED' },
+    { from: 'STARTED', to: 'FAILED' },
+    { from: 'STARTED', to: 'CANCELLED' },
+    { from: 'STARTED', to: 'EXPIRED' }
+] as const;
+const validToStates: TaskState[] = taskStates.filter((state) => {
+    return validTaskStateTransitions.every((transition) => transition.from !== state);
+});
+export type ValidTaskStateTransitions = (typeof validTaskStateTransitions)[number];
+
+const TaskStateTransition = {
+    validate({ from, to }: { from: TaskState; to: TaskState }): Result<ValidTaskStateTransitions> {
+        const transition = validTaskStateTransitions.find((t) => t.from === from && t.to === to);
+        if (transition) {
+            return Ok(transition);
+        } else {
+            return Err(new Error(`Invalid state transition from ${from} to ${to}`));
+        }
+    }
+};
+
+export interface DBTask {
+    readonly id: string;
+    readonly name: string;
+    readonly payload: JsonObject;
+    readonly group_key: string;
+    readonly group_max_concurrency: number;
+    readonly retry_max: number;
+    readonly retry_count: number;
+    readonly starts_after: Date;
+    readonly created_to_started_timeout_secs: number;
+    readonly started_to_completed_timeout_secs: number;
+    readonly heartbeat_timeout_secs: number;
+    readonly created_at: Date;
+    state: TaskState;
+    last_state_transition_at: Date;
+    last_heartbeat_at: Date;
+    output: JsonValue | null;
+    terminated: boolean;
+    readonly schedule_id: string | null;
+    readonly retry_key: string | null;
+    readonly owner_key: string | null;
+}
+export const DbTask = {
+    to: (task: Task): DBTask => {
+        return {
+            id: task.id,
+            name: task.name,
+            payload: task.payload,
+            group_key: task.groupKey,
+            group_max_concurrency: task.groupMaxConcurrency,
+            retry_max: task.retryMax,
+            retry_count: task.retryCount,
+            starts_after: task.startsAfter,
+            created_to_started_timeout_secs: task.createdToStartedTimeoutSecs,
+            started_to_completed_timeout_secs: task.startedToCompletedTimeoutSecs,
+            heartbeat_timeout_secs: task.heartbeatTimeoutSecs,
+            created_at: task.createdAt,
+            state: task.state,
+            last_state_transition_at: task.lastStateTransitionAt,
+            last_heartbeat_at: task.lastHeartbeatAt,
+            output: task.output,
+            terminated: task.terminated,
+            schedule_id: task.scheduleId,
+            retry_key: task.retryKey,
+            owner_key: task.ownerKey
+        };
+    },
+    from: (dbTask: DBTask): Task => {
+        return {
+            id: dbTask.id,
+            name: dbTask.name,
+            payload: dbTask.payload,
+            groupKey: dbTask.group_key,
+            groupMaxConcurrency: dbTask.group_max_concurrency,
+            retryMax: dbTask.retry_max,
+            retryCount: dbTask.retry_count,
+            startsAfter: dbTask.starts_after,
+            createdToStartedTimeoutSecs: dbTask.created_to_started_timeout_secs,
+            startedToCompletedTimeoutSecs: dbTask.started_to_completed_timeout_secs,
+            heartbeatTimeoutSecs: dbTask.heartbeat_timeout_secs,
+            createdAt: dbTask.created_at,
+            state: dbTask.state,
+            lastStateTransitionAt: dbTask.last_state_transition_at,
+            lastHeartbeatAt: dbTask.last_heartbeat_at,
+            output: dbTask.output,
+            terminated: dbTask.terminated,
+            scheduleId: dbTask.schedule_id,
+            retryKey: dbTask.retry_key,
+            ownerKey: dbTask.owner_key
+        };
+    }
+};
+
+export interface CreateOpts {
+    groupTaskCap?: number;
+    onConflict?: 'throw' | 'skip';
+}
+
+export type DiscardReason = 'capped' | 'duplicate' | 'conflict';
+export interface DiscardedTask {
+    props: TaskProps;
+    reason: DiscardReason;
+}
+
+export async function create(db: knex.Knex, taskProps: TaskProps[], opts: CreateOpts = {}): Promise<Result<{ created: Task[]; discarded: DiscardedTask[] }>> {
+    const groupTaskCap = opts.groupTaskCap ?? defaultSchedulerConfig.limits.groupTaskCap;
+    const onConflict = opts.onConflict ?? 'throw';
+    if (taskProps.length === 0) {
+        return Ok({ created: [], discarded: [] });
+    }
+    try {
+        // safeguard to prevent creating an unbounded number of tasks for the same group
+        // Note: check and insertion are not atomic so creating more tasks than the limit is still possible but this is a safeguard, not a strict limit
+        const groupKeys = [...new Set(taskProps.map((p) => p.groupKey))];
+        const sizes = await queueSizes(db, { groupKeys });
+        if (sizes.isErr()) {
+            return Err(sizes.error);
+        }
+
+        const overrides = await groupOverrides.getByGroupKeys(db, groupKeys);
+        if (overrides.isErr()) {
+            return Err(overrides.error);
+        }
+
+        const now = new Date();
+        const candidatesPerGroup = new Map<string, { props: TaskProps; task: Task }[]>();
+        const discarded: DiscardedTask[] = [];
+        for (const props of taskProps) {
+            if (!candidatesPerGroup.has(props.groupKey)) {
+                candidatesPerGroup.set(props.groupKey, []);
+            }
+            const group = candidatesPerGroup.get(props.groupKey)!;
+            if (group.length < groupTaskCap - (sizes.value.get(props.groupKey) ?? 0)) {
+                group.push({
+                    props,
+                    task: {
+                        ...props,
+                        groupMaxConcurrency: overrides.value.get(props.groupKey) ?? props.groupMaxConcurrency,
+                        id: uuidv7(),
+                        state: 'CREATED',
+                        createdAt: now,
+                        lastStateTransitionAt: now,
+                        lastHeartbeatAt: now,
+                        terminated: false,
+                        output: null,
+                        retryKey: props.retryKey || uuidv4()
+                    }
+                });
+            } else {
+                discarded.push({ props, reason: 'capped' });
+            }
+        }
+        const candidates = Array.from(candidatesPerGroup.values()).flat();
+        const created: Task[] = [];
+        const insertedNameCounts = new Map<string, number>();
+        const insertedTaskIds = new Set<string>();
+        for (let i = 0; i < candidates.length; i += TASKS_INSERT_BATCH_SIZE) {
+            const chunk = candidates.slice(i, i + TASKS_INSERT_BATCH_SIZE);
+            const query = db.from<DBTask>(TASKS_TABLE).insert(chunk.map((c) => DbTask.to(c.task)));
+            if (onConflict === 'skip') {
+                query.onConflict('name').ignore();
+            } else {
+                query.onConflict(db.raw("(schedule_id) WHERE state IN ('CREATED', 'STARTED')")).ignore();
+            }
+            const batch = await query.returning('*');
+            for (const dbTask of batch) {
+                const t = DbTask.from(dbTask);
+                created.push(t);
+                insertedTaskIds.add(t.id);
+                insertedNameCounts.set(t.name, (insertedNameCounts.get(t.name) ?? 0) + 1);
+            }
+        }
+        // In onConflict 'skip' mode, we should report duplicates as discarded.
+        if (onConflict === 'skip') {
+            for (const { props } of candidates) {
+                const remaining = insertedNameCounts.get(props.name) ?? 0;
+                if (remaining > 0) {
+                    insertedNameCounts.set(props.name, remaining - 1);
+                } else {
+                    discarded.push({ props, reason: 'duplicate' });
+                }
+            }
+        }
+        if (onConflict === 'throw') {
+            for (const { props, task } of candidates) {
+                if (!insertedTaskIds.has(task.id)) {
+                    discarded.push({ props, reason: 'conflict' });
+                }
+            }
+        }
+        return Ok({ created, discarded });
+    } catch (err) {
+        if (isTasksUniqueNameViolation(err)) {
+            return Err(new DuplicateTaskNameError());
+        }
+        return Err(new Error(`Error creating tasks: ${stringifyError(err)}`));
+    }
+}
+
+function isTasksUniqueNameViolation(err: unknown): boolean {
+    if (!err || typeof err !== 'object') {
+        return false;
+    }
+
+    const error = err as { code?: string; constraint?: string; message?: string };
+    return error.code === '23505' && error.constraint === 'tasks_unique_name';
+}
+
+// Coalesce concurrent queueSizes queries for the same group keys.
+// When multiple immediate() calls target the same group key concurrently,
+// they share a single DB query instead of each running their own count.
+// The result may be slightly stale but the cap is a safeguard, not a strict limit.
+const inflightQueueSizes = new Map<string, Promise<Result<Map<string, number>>>>();
+
+export async function queueSizes(db: knex.Knex, opts: { groupKeys?: string[] | undefined }): Promise<Result<Map<string, number>>> {
+    const cacheKey = opts.groupKeys ? JSON.stringify([...opts.groupKeys].sort()) : '*';
+    const inflight = inflightQueueSizes.get(cacheKey);
+    if (inflight) {
+        return inflight;
+    }
+
+    const promise = queueSizesQuery(db, opts).finally(() => {
+        inflightQueueSizes.delete(cacheKey);
+    });
+    inflightQueueSizes.set(cacheKey, promise);
+    return promise;
+}
+
+async function queueSizesQuery(db: knex.Knex, opts: { groupKeys?: string[] | undefined }): Promise<Result<Map<string, number>>> {
+    try {
+        const q = db.from(TASKS_TABLE).select('group_key as groupKey').count('* as count').where('state', 'CREATED').groupBy('group_key');
+        if (opts.groupKeys && opts.groupKeys.length > 0) {
+            q.whereIn('group_key', opts.groupKeys);
+        }
+        const rows = await q;
+        return Ok(new Map(rows.map((r) => [r.groupKey as string, Number(r.count)])));
+    } catch (err) {
+        return Err(new Error(`Error fetching queue sizes: ${stringifyError(err)}`));
+    }
+}
+
+export async function get(db: knex.Knex, taskId: string): Promise<Result<Task>> {
+    const task = await db.from<DBTask>(TASKS_TABLE).where('id', taskId).first();
+    if (!task) {
+        return Err(new Error(`Task with id '${taskId}' not found`));
+    }
+    return Ok(DbTask.from(task));
+}
+
+export async function search(
+    db: knex.Knex,
+    params?: {
+        ids?: string[];
+        groupKey?: string;
+        states?: TaskState[];
+        scheduleId?: string;
+        retryKey?: string;
+        ownerKey?: string;
+        limit?: number;
+    }
+): Promise<Result<Task[]>> {
+    const query = db.from<DBTask>(TASKS_TABLE);
+    if (params?.ids) {
+        query.whereIn('id', params.ids);
+    }
+    if (params?.groupKey) {
+        query.where('group_key', params.groupKey);
+    }
+    if (params?.states) {
+        query.whereIn('state', params.states);
+    }
+    if (params?.scheduleId) {
+        query.where('schedule_id', params.scheduleId);
+    }
+    if (params?.retryKey) {
+        query.where('retry_key', params.retryKey);
+    }
+    if (params?.ownerKey) {
+        query.where('owner_key', params.ownerKey);
+    }
+    const limit = params?.limit || 100;
+    const tasks = await query.limit(limit).orderBy('id');
+    return Ok(tasks.map(DbTask.from));
+}
+
+export async function heartbeat(db: knex.Knex, taskId: string): Promise<Result<Task>> {
+    try {
+        const updated = await db.from<DBTask>(TASKS_TABLE).where('id', taskId).update({ last_heartbeat_at: new Date() }).returning('*');
+        if (!updated?.[0]) {
+            return Err(new Error(`Error: Task with id '${taskId}' not updated`));
+        }
+        return Ok(DbTask.from(updated[0]));
+    } catch (err) {
+        return Err(new Error(`Error updating task ${taskId}: ${stringifyError(err)}`));
+    }
+}
+
+export async function transitionState(
+    db: knex.Knex,
+    props:
+        | {
+              taskId: string;
+              newState: TaskTerminalState;
+              output: JsonValue;
+          }
+        | {
+              taskId: string;
+              newState: TaskNonTerminalState;
+          }
+): Promise<Result<Task>> {
+    const task = await get(db, props.taskId);
+    if (task.isErr()) {
+        return Err(new Error(`Task with id '${props.taskId}' not found`));
+    }
+
+    const transition = TaskStateTransition.validate({ from: task.value.state, to: props.newState });
+    if (transition.isErr()) {
+        return Err(transition.error);
+    }
+
+    const output = 'output' in props ? props.output : null;
+    const asPostgresJson = (val: JsonValue) => {
+        if (val === null) {
+            return null;
+        }
+        if (Array.isArray(val)) {
+            // https://github.com/brianc/node-postgres/issues/442
+            return JSON.stringify(val);
+        }
+        switch (typeof val) {
+            case 'string': {
+                return db.raw(`to_json(?::text)`, [val]);
+            }
+            default:
+                return db.raw(`to_json(?::json)`, [val]);
+        }
+    };
+
+    const updated = await db
+        .from<DBTask>(TASKS_TABLE)
+        .where('id', props.taskId)
+        .update({
+            state: transition.value.to,
+            last_state_transition_at: new Date(),
+            terminated: validToStates.includes(transition.value.to),
+            output: asPostgresJson(output)
+        })
+        .returning('*');
+    if (!updated?.[0]) {
+        return Err(new Error(`Task with id '${props.taskId}' not found`));
+    }
+
+    return Ok(DbTask.from(updated[0]));
+}
+
+export async function dequeue(db: knex.Knex, { groupKeyPattern, limit }: { groupKeyPattern: string; limit: number }): Promise<Result<Task[]>> {
+    try {
+        const groupKeyLikePattern = groupKeyPattern.replace(/\*/g, '%');
+        const tasks = await db.transaction(async (trx) => {
+            // Try to acquire a lock to prevent concurrent dequeueing of the same group in order to ensure max concurrency is respected.
+            // If it is already held, another process is already dequeueing this group, so we skip the expensive query and return early.
+            const { rows } = await trx.raw<{ rows: { lock: boolean }[] }>(`SELECT pg_try_advisory_xact_lock(?) as lock`, [stringToHash(groupKeyPattern)]);
+            if (!rows?.[0]?.lock) {
+                return [];
+            }
+            return (
+                trx
+                    // 1. select created tasks that are ready to be started alongside their group
+                    // Note: tasks and groups are locked for update, preventing concurrent queries
+                    // to dequeue the same tasks and/or groups
+                    .with('candidates', (qb) => {
+                        qb.select('id', 'group_key', 'created_at', 'group_max_concurrency')
+                            .from(TASKS_TABLE)
+                            .where('state', 'CREATED')
+                            .whereLike('group_key', groupKeyLikePattern)
+                            .where('starts_after', '<=', db.fn.now())
+                            .forUpdate()
+                            .skipLocked();
+                    })
+                    // 2. count the number of running tasks
+                    .with('running', (qb) => {
+                        qb.select(db.raw('count(id) as running_count'), 'group_key')
+                            .from(TASKS_TABLE)
+                            .where('state', 'STARTED')
+                            .whereLike('group_key', groupKeyLikePattern)
+                            .groupBy('group_key');
+                    })
+                    // 3. rank the candidate tasks by created_at for each group
+                    .with('with_rank', (qb) => {
+                        qb.select(
+                            'c.*',
+                            db.raw('ROW_NUMBER() OVER (PARTITION BY c.group_key ORDER BY c.created_at ASC) as rank'),
+                            db.raw('COALESCE(r.running_count, 0) as current_running')
+                        )
+                            .from('candidates as c')
+                            .leftJoin('running as r', 'c.group_key', 'r.group_key');
+                    })
+                    // 4. select the tasks that can be started based on the max_concurrency
+                    .with('to_start', (qb) => {
+                        qb.select('id', 'group_key', 'created_at')
+                            .from('with_rank')
+                            .whereRaw('group_max_concurrency = 0 OR (rank + current_running <= group_max_concurrency)')
+
+                            .orderBy('created_at', 'asc')
+                            .limit(limit);
+                    })
+                    // 5. starts the tasks
+                    .with(
+                        'updated_tasks',
+                        db
+                            .from<DBTask>(TASKS_TABLE)
+                            .update({
+                                state: 'STARTED',
+                                last_heartbeat_at: new Date(),
+                                last_state_transition_at: new Date()
+                            })
+                            .whereIn('id', db.select('id').from('to_start'))
+                            .returning('*')
+                    )
+                    // 6. return the updated tasks
+                    .select('*')
+                    .from<DBTask>('updated_tasks')
+                    .orderBy('id')
+            );
+        });
+
+        if (!tasks?.[0]) {
+            return Ok([]);
+        }
+        return Ok(tasks.map(DbTask.from));
+    } catch (err) {
+        return Err(new Error(`Error dequeuing tasks for group key '${groupKeyPattern}': ${stringifyError(err)}`));
+    }
+}
+
+export async function expiresIfTimeout(db: knex.Knex, opts: { batchSize?: number } = {}): Promise<Result<Task[]>> {
+    const batchSize = opts.batchSize ?? defaultSchedulerConfig.limits.expiringBatchSize;
+    try {
+        const { rows: tasks } = await db.raw<{ rows: DBTask[] }>(
+            `
+            WITH eligible_tasks AS (
+                SELECT id, state, output,
+                    CASE
+                        WHEN state = 'CREATED' AND starts_after + created_to_started_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP
+                            THEN '{"reason": "createdToStartedTimeoutSecs_exceeded"}'::json
+                        WHEN state = 'STARTED' AND last_heartbeat_at + heartbeat_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP
+                            THEN '{"reason": "heartbeatTimeoutSecs_exceeded"}'::json
+                        WHEN state = 'STARTED' AND last_state_transition_at + started_to_completed_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP
+                            THEN '{"reason": "startedToCompletedTimeoutSecs_exceeded"}'::json
+                        ELSE output
+                    END AS reason
+                FROM ${TASKS_TABLE}
+                WHERE (
+                   state = 'CREATED' AND starts_after + created_to_started_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP)
+                   OR (
+                       state = 'STARTED'
+                       AND (
+                           last_heartbeat_at + heartbeat_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP
+                           OR last_state_transition_at + started_to_completed_timeout_secs * INTERVAL '1 second' < CURRENT_TIMESTAMP
+                       )
+                    )
+                FOR UPDATE SKIP LOCKED
+                LIMIT :batchSize
+            )
+            UPDATE ${TASKS_TABLE} t
+            SET state = 'EXPIRED',
+                last_state_transition_at = CURRENT_TIMESTAMP,
+                terminated = TRUE,
+                output = e.reason
+            FROM eligible_tasks e
+            WHERE t.id = e.id
+            RETURNING t.*;
+        `,
+            { batchSize }
+        );
+        if (!tasks?.[0]) {
+            return Ok([]);
+        }
+        return Ok(tasks.map(DbTask.from));
+    } catch (err) {
+        return Err(new Error(`Error expiring tasks: ${stringifyError(err)}`));
+    }
+}
+
+export interface GroupBackpressure {
+    group_key: string;
+    queued: number;
+}
+
+export async function getGroupsWithBackpressure(db: knex.Knex, { limit }: { limit: number }): Promise<Result<GroupBackpressure[]>> {
+    try {
+        const { rows } = await db.raw<{ rows: GroupBackpressure[] }>(
+            `
+            SELECT group_key, count(*)::int as queued
+            FROM ${TASKS_TABLE}
+            WHERE state = 'CREATED'
+              AND group_max_concurrency > 0
+            GROUP BY group_key
+            HAVING count(*) > max(group_max_concurrency)
+            ORDER BY queued DESC
+            LIMIT ?
+            `,
+            [limit]
+        );
+        return Ok(rows ?? []);
+    } catch (err) {
+        return Err(new Error(`Error getting groups with backpressure: ${stringifyError(err)}`));
+    }
+}
+
+export async function hardDeleteOlderThanNDays(db: knex.Knex, days: number): Promise<Result<Task[]>> {
+    try {
+        // Delete terminated tasks where lastStateTransitionAt is older than N days
+        // unless it is the most recent task for an given schedule
+        const tasks = await db
+            .from<DBTask>(TASKS_TABLE)
+            .where(
+                'id',
+                '=',
+                // schedules.id is null if the task is not associated with a schedule (ie: actions)
+                // or if the task is not the last task for its associated schedule
+                db.raw(`ANY(ARRAY(
+                    SELECT ${TASKS_TABLE}.id
+                    FROM ${TASKS_TABLE}
+                    LEFT JOIN ${SCHEDULES_TABLE} ON ${SCHEDULES_TABLE}.last_scheduled_task_id = ${TASKS_TABLE}.id
+                    WHERE ${TASKS_TABLE}.terminated = true
+                    AND ${TASKS_TABLE}.starts_after < NOW() - INTERVAL '${days} days'
+                    AND ${SCHEDULES_TABLE}.id IS NULL
+                    ORDER BY ${TASKS_TABLE}.id ASC
+                    LIMIT 1000
+                  ))`)
+            )
+            .del()
+            .returning('*');
+        if (!tasks?.[0]) {
+            return Ok([]);
+        }
+        return Ok(tasks.map(DbTask.from));
+    } catch (err) {
+        return Err(new Error(`Error hard deleting tasks older than ${days} days: ${stringifyError(err)}`));
+    }
+}

@@ -1,0 +1,25 @@
+{
+    "semi": true,
+    "trailingComma": "none",
+    "singleQuote": true,
+    "printWidth": 160,
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "useTabs": false,
+    "quoteProps": "as-needed",
+    "tabWidth": 4,
+    "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+    "importOrder": [
+        "<BUILTIN_MODULES>",
+        "",
+        "<THIRD_PARTY_MODULES>",
+        "",
+        "^@nangohq/(.*)$",
+        "",
+        "^@/(.*)$",
+        "^[./]",
+        "",
+        "<TYPES>"
+    ]
+}

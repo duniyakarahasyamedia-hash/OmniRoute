@@ -1,0 +1,214 @@
+import type { ApiEndpoint, ApiError } from '../api.js';
+
+export type ConnectionQueryString = {
+    connection_id?: string | undefined;
+    params?: Record<string, any> | undefined;
+    user_scope?: string | undefined;
+} & (
+    | {
+          public_key: string;
+          hmac?: string | undefined;
+      }
+    | { connect_session_token: string }
+);
+
+export interface ConnectionResponseSuccess {
+    providerConfigKey: string;
+    connectionId: string;
+    isPending?: boolean;
+}
+
+export type WebSocketConnectionMessage = WebSocketConnectionAck | WebSocketConnectionError | WebSocketConnectionResponseSuccess;
+export interface WebSocketConnectionAck {
+    message_type: 'connection_ack';
+    ws_client_id: string;
+}
+export interface WebSocketConnectionError {
+    message_type: 'error';
+    provider_config_key?: string | undefined;
+    connection_id?: string | undefined;
+    error_type: string;
+    error_desc: string;
+}
+export interface WebSocketConnectionResponseSuccess {
+    message_type: 'success';
+    provider_config_key: string;
+    connection_id: string;
+    is_pending: boolean;
+    private_key?: string | undefined;
+}
+
+type AuthErrors =
+    | ApiError<'invalid_body'>
+    | ApiError<'invalid_query_params'>
+    | ApiError<'unknown_provider_config'>
+    | ApiError<'unknown_provider_template'>
+    | ApiError<'invalid_auth_mode'>
+    | ApiError<'invalid_credentials'>
+    | ApiError<'integration_not_allowed'>
+    | ApiError<'invalid_connection'>
+    | ApiError<'connection_test_failed'>
+    | ApiError<'connection_validation_failed'>;
+
+export type PostPublicApiKeyAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        apiKey: string;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/api-auth/api-key/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicBasicAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        username: string;
+        password: string;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/api-auth/basic/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicTbaAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        token_id: string;
+        token_secret: string;
+        oauth_client_id_override?: string | undefined;
+        oauth_client_secret_override?: string | undefined;
+        oauth_refresh_token_override?: string | undefined;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/tba/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicJwtAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: Record<string, any>;
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/jwt/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicUnauthenticatedAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/unauthenticated/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicBillAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        username: string;
+        password: string;
+        organization_id: string;
+        dev_key: string;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/bill/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicTwoStepAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: Record<string, any>;
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/two-step/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicSignatureAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        username: string;
+        password: string;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/signature-based/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+type AwsSigV4AuthErrors =
+    | AuthErrors
+    | ApiError<'invalid_aws_sigv4_config'>
+    | ApiError<'missing_aws_sigv4_service'>
+    | ApiError<'missing_aws_sigv4_sts_endpoint'>
+    | ApiError<'missing_aws_sigv4_builtin_credentials'>
+    | ApiError<'missing_aws_sigv4_region'>
+    | ApiError<'aws_sigv4_sts_request_failed'>;
+
+export type PostPublicAwsSigV4Authorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        role_arn: string;
+        region?: string | undefined;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/aws-sigv4/:providerConfigKey';
+    Error: AwsSigV4AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;
+
+export type PostPublicOauthOutboundAuthorization = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'TODO: audit coverage pending' };
+    Method: 'POST';
+    Body: {
+        username: string;
+        password: string;
+    };
+    Querystring: ConnectionQueryString;
+    Params: {
+        providerConfigKey: string;
+    };
+    Path: '/auth/oauth-outbound/:providerConfigKey';
+    Error: AuthErrors;
+    Success: ConnectionResponseSuccess;
+}>;

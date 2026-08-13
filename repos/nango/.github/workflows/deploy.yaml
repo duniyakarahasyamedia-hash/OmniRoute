@@ -1,0 +1,414 @@
+name: '[Release] Deploy service'
+run-name: '[Release] [${{ inputs.stage }}] Deploy ${{ inputs.service }}'
+
+on:
+    workflow_dispatch:
+        inputs:
+            stage:
+                type: choice
+                description: 'stage to deploy to, defaults to development'
+                required: true
+                default: 'development'
+                options:
+                    - development
+                    - staging
+                    - production
+                    - replit
+                    - charm-sandbox
+            service:
+                type: choice
+                description: 'Service to deploy, defaults to server'
+                required: true
+                default: 'server'
+                options:
+                    - server
+                    - jobs
+                    - runner
+                    - persist
+                    - orchestrator
+                    - metering
+                    - connect_ui
+                    - app_ui
+                    - lambda
+                    - agentcore
+
+# One deploy per service+stage at a time. UI deploys `aws s3 sync --delete` into a
+# shared bucket, so two concurrent runs silently corrupt it (left the live app
+# pointing at a deleted bundle). Queue the rest (queue: max) without aborting an
+# in-flight sync (cancel-in-progress: false).
+concurrency:
+    group: deploy-${{ inputs.service }}-${{ inputs.stage }}
+    cancel-in-progress: false
+    queue: max
+# Least privilege by default: the GITHUB_TOKEN gets no scopes unless a job
+# explicitly opts in below.
+permissions: {}
+
+jobs:
+    notify_start:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read # checkout the repo to reach the local composite action
+        outputs:
+            ts: ${{ steps.notify.outputs.ts }}
+            started_at: ${{ steps.notify.outputs.started_at }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Post deploy started message
+              id: notify
+              continue-on-error: true
+              uses: ./.github/actions/slack-deploy-notification
+              with:
+                  bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+                  channel: ${{ vars.SLACK_DEPLOYS_CHANNEL_ID }}
+                  service: ${{ inputs.service }}
+                  stage: ${{ inputs.stage }}
+                  phase: start
+    deploy_app_ui:
+        if: inputs.service == 'app_ui'
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.stage }}
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install dependencies
+              run: npm ci
+            - name: Build Webapp
+              run: npm run ts-build && npm run -w @nangohq/webapp build
+            - name: Inject API origin into dist/index.html
+              run: |
+                  sed -E -i 's#(<meta name="nango-api-origin" content=")[^"]*(")#\1${{ vars.API_DOMAIN }}\2#' packages/webapp/dist/index.html
+            - name: configure aws credentials
+              if: inputs.stage != 'replit'
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ vars.DEPLOY_APP_UI_ROLE }}
+                  role-session-name: GitHub_to_AWS_via_FederatedOIDC
+                  aws-region: ${{ vars.AWS_REGION }}
+            - name: Deploy Webapp to S3
+              if: inputs.stage != 'replit'
+              run: |
+                  aws s3 sync packages/webapp/dist/ s3://${{ vars.APP_UI_BUCKET }} --delete
+            - name: Create invalidation
+              if: inputs.stage != 'replit'
+              run: |
+                  aws cloudfront create-invalidation --distribution-id ${{ vars.APP_UI_DISTRIBUTION_ID }} --paths "/*"
+            - name: Auth to GCP (OIDC)
+              if: inputs.stage == 'replit'
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ vars.GCP_DEPLOYER_SA }}
+            - name: Setup gcloud SDK
+              if: inputs.stage == 'replit'
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ vars.GCP_PROJECT_ID }}
+            - name: Upload Webapp to GCS
+              if: inputs.stage == 'replit'
+              run: |
+                  gsutil -m rsync -r -d packages/webapp/dist/ gs://${{ vars.APP_UI_BUCKET }}
+            - name: Set cache-control for index.html
+              if: inputs.stage == 'replit'
+              run: |
+                  gsutil setmeta -h "Cache-Control:no-store, no-cache, must-revalidate, max-age=0" "gs://${{ vars.APP_UI_BUCKET }}/index.html"
+            - name: Invalidate Cloud CDN cache
+              if: inputs.stage == 'replit'
+              run: |
+                  gcloud compute url-maps invalidate-cdn-cache ${{ vars.APP_UI_URL_MAP }} \
+                    --path "/*" \
+                    --project "${{ vars.GCP_PROJECT_ID }}"
+    deploy_connect_ui:
+        if: inputs.service == 'connect_ui'
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+            contents: read
+        environment: ${{ inputs.stage }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install dependencies
+              run: npm ci
+            - name: Build Connect UI
+              run: npm run ts-build && npm run -w @nangohq/connect-ui build
+            - name: configure aws credentials
+              if: inputs.stage != 'replit'
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ vars.DEPLOY_CONNECT_UI_ROLE }}
+                  role-session-name: GitHub_to_AWS_via_FederatedOIDC
+                  aws-region: ${{ vars.AWS_REGION }}
+            - name: Deploy Connect UI to S3
+              if: inputs.stage != 'replit'
+              run: |
+                  aws s3 sync packages/connect-ui/dist/ s3://${{ vars.CONNECT_UI_BUCKET }} --delete
+            - name: Create invalidation
+              if: inputs.stage != 'replit'
+              run: |
+                  aws cloudfront create-invalidation --distribution-id ${{ vars.CONNECT_UI_DISTRIBUTION_ID }} --paths "/*"
+            - name: Auth to GCP (OIDC)
+              if: inputs.stage == 'replit'
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ vars.GCP_DEPLOYER_SA }}
+            - name: Setup gcloud SDK
+              if: inputs.stage == 'replit'
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ vars.GCP_PROJECT_ID }}
+            - name: Upload Webapp to GCS
+              if: inputs.stage == 'replit'
+              run: |
+                  gsutil -m rsync -r -d packages/connect-ui/dist/ gs://${{ vars.CONNECT_UI_BUCKET }}
+            - name: Set cache-control for index.html
+              if: inputs.stage == 'replit'
+              run: |
+                  gsutil setmeta -h "Cache-Control:no-store, no-cache, must-revalidate, max-age=0" "gs://${{ vars.CONNECT_UI_BUCKET }}/index.html"
+            - name: Invalidate Cloud CDN cache
+              if: inputs.stage == 'replit'
+              run: |
+                  gcloud compute url-maps invalidate-cdn-cache ${{ vars.CONNECT_UI_URL_MAP }} \
+                    --path "/*" \
+                    --project "${{ vars.GCP_PROJECT_ID }}"
+    deploy:
+        if: inputs.service != 'runner' && inputs.service != 'connect_ui' && inputs.service != 'app_ui' && inputs.service != 'lambda' && inputs.service != 'agentcore'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            actions: write
+        steps:
+            - name: Checkout nango-environments
+              uses: actions/checkout@v4
+              with:
+                  repository: NangoHQ/nango-environments
+                  token: ${{ secrets.NANGO_ENVIRONMENTS_PAT }}
+                  path: nango-environments
+
+            - name: Deploy ${{ inputs.service }} (AWS)
+              if: inputs.stage != 'replit'
+              run: |
+                  cd nango-environments
+
+                  # Configure git for the commit
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  # Update the nango-values.yaml file for the current stage and service
+                  yq eval '.spec.values.${{ inputs.service }}.image.tag = "${{ github.sha }}"' -i apps/${{ inputs.stage }}/nango-values.yaml
+
+                  # Commit and push the changes
+                  git add apps/${{ inputs.stage }}/nango-values.yaml
+                  git commit -m "Update ${{ inputs.service }} image tag to ${{ github.sha }} in ${{ inputs.stage }}"
+                  git push origin main
+            - name: Deploy ${{ inputs.service }} (Replit)
+              if: inputs.stage == 'replit'
+              run: |
+                  cd nango-environments
+
+                  # Configure git for the commit
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  # Update the nango-values.yaml file for the current stage and service
+                  yq eval '.spec.values.${{ inputs.service }}.image.tag = "${{ github.sha }}"' -i apps/customers/replit/production/nango.yaml
+                  # Commit and push the changes
+                  git add apps/customers/replit/production/nango.yaml
+                  git commit -m "Update ${{ inputs.service }} image tag to ${{ github.sha }} in ${{ inputs.stage }}"
+                  git push origin main
+    deploy_runners:
+        if: inputs.service == 'runner' && inputs.stage != 'replit'
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.stage }}
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Deploy all runners
+              env:
+                  API_KEY: ${{ secrets.RENDER_API_KEY }}
+                  ENVIRONMENT: ${{ inputs.stage }}
+                  INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+              run: |
+                  curl -sS --fail-with-body --request POST "${{ vars.API_DOMAIN }}/internal/fleet/nango_runners_k8s/rollout" \
+                    --header "authorization: Bearer $INTERNAL_API_KEY"\
+                    --header "content-type: application/json"\
+                    --data "{ \"image\": \"nangohq/nango:${{ github.sha }}\", \"imageType\":\"docker\" }"
+    deploy_lambda:
+        if: inputs.service == 'lambda' && inputs.stage != 'replit'
+        runs-on: ubuntu-24.04-arm
+        permissions:
+            id-token: write
+            contents: read
+        environment: ${{ inputs.stage }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+            - name: Configure aws credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ vars.DEPLOY_LAMBDA_ROLE }}
+                  role-session-name: GitHub_to_AWS_via_FederatedOIDC
+                  aws-region: ${{ vars.AWS_REGION }}
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+            - name: Build and Push Lambda Image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: packages/lambda-runner/Dockerfile.lambda
+                  platforms: linux/arm64
+                  push: true
+                  provenance: false
+                  tags: |
+                      ${{ steps.login-ecr.outputs.registry }}/${{ vars.LAMBDA_REPOSITORY_NAME }}:${{ github.sha }}
+                  cache-from: type=gha,scope=lambda
+                  cache-to: type=gha,scope=lambda,mode=max
+            - name: Rollout image
+              env:
+                  ENVIRONMENT: ${{ inputs.stage }}
+                  INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+              run: |
+                  curl -sS --fail-with-body --request POST "${{ vars.API_DOMAIN }}/internal/fleet/nango_runners_lambda/rollout" \
+                    --header "authorization: Bearer $INTERNAL_API_KEY"\
+                    --header "content-type: application/json"\
+                    --data "{ \"image\": \"${{ vars.LAMBDA_REPOSITORY_NAME }}:${{ github.sha }}\", \"imageType\":\"ecr\" }"
+    deploy_agentcore:
+        if: inputs.service == 'agentcore' && inputs.stage != 'replit'
+        runs-on: ubuntu-24.04-arm
+        permissions:
+            id-token: write
+            contents: read
+        environment: ${{ inputs.stage }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+            - name: Resolve Nango package version
+              id: nango-version
+              run: |
+                  version=$(node -p "require('./package.json').version")
+                  if ! npm view "nango@${version}" version --silent >/dev/null 2>&1; then
+                      echo "nango@${version} has not been published yet" >&2
+                      exit 1
+                  fi
+                  echo "version=${version}" >> "$GITHUB_OUTPUT"
+            - name: Resolve AgentCore image URI
+              id: agentcore-image
+              env:
+                  AGENTCORE_RUNTIME_IMAGE_REPOSITORY_URL: ${{ vars.AGENTCORE_RUNTIME_IMAGE_REPOSITORY_URL }}
+              run: |
+                  if [[ -z "$AGENTCORE_RUNTIME_IMAGE_REPOSITORY_URL" ]]; then
+                      echo "AGENTCORE_RUNTIME_IMAGE_REPOSITORY_URL is required" >&2
+                      exit 1
+                  fi
+                  echo "uri=${AGENTCORE_RUNTIME_IMAGE_REPOSITORY_URL}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            - name: Install AWS CLI
+              env:
+                  AWS_CLI_VERSION: 2.34.44
+                  AWS_REGION: ${{ vars.AWS_REGION }}
+                  AWS_PAGER: ''
+              run: |
+                  if [[ -z "$AWS_REGION" ]]; then
+                      echo "AWS_REGION is required" >&2
+                      exit 1
+                  fi
+                  curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${AWS_CLI_VERSION}.zip" -o awscliv2.zip
+                  unzip -q awscliv2.zip
+                  sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+                  aws --version
+                  aws bedrock-agentcore-control list-agent-runtimes --region "$AWS_REGION" --generate-cli-skeleton output >/dev/null
+            - name: Configure aws credentials
+              uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+              with:
+                  role-to-assume: ${{ vars.DEPLOY_AGENTCORE_SANDBOX_ROLE }}
+                  role-session-name: GitHub_to_AWS_via_FederatedOIDC
+                  aws-region: ${{ vars.AWS_REGION }}
+            - name: Login to Amazon ECR
+              uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+            - name: Build and Push AgentCore Sandbox Image
+              uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+              with:
+                  context: .
+                  file: packages/sandbox/agentcore-runtime/Dockerfile
+                  platforms: linux/arm64
+                  push: true
+                  provenance: false
+                  tags: |
+                      ${{ steps.agentcore-image.outputs.uri }}
+                  build-args: |
+                      NANGO_VERSION=${{ steps.nango-version.outputs.version }}
+                  cache-from: type=gha,scope=agentcore-sandbox
+                  cache-to: type=gha,scope=agentcore-sandbox,mode=max
+            - name: Deploy AgentCore runtime
+              id: deploy-agentcore
+              env:
+                  AGENTCORE_RUNTIME_NAME: ${{ vars.AGENTCORE_RUNTIME_NAME || format('nango_sandbox_{0}', inputs.stage) }}
+                  AGENTCORE_RUNTIME_ROLE_ARN: ${{ vars.AGENTCORE_RUNTIME_ROLE_ARN }}
+                  AGENTCORE_RUNTIME_IMAGE_URI: ${{ steps.agentcore-image.outputs.uri }}
+              run: |
+                  node scripts/deploy-agentcore-sandbox.mjs
+    notify_result:
+        # Runs after whichever deploy job executed (the others are skipped) and reports the outcome.
+        if: always()
+        needs:
+            - notify_start
+            - deploy_app_ui
+            - deploy_connect_ui
+            - deploy
+            - deploy_runners
+            - deploy_lambda
+            - deploy_agentcore
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read # checkout the repo to reach the local composite action
+        steps:
+            - name: Determine deploy outcome
+              id: outcome
+              run: |
+                  # Only one deploy job runs per dispatch; the rest are skipped.
+                  # failure/cancelled -> failure; a single success -> success;
+                  # nothing ran (e.g. runner/lambda on replit) -> skipped, so we
+                  # don't announce a success for a deploy that never happened.
+                  results=(
+                    "${{ needs.deploy_app_ui.result }}"
+                    "${{ needs.deploy_connect_ui.result }}"
+                    "${{ needs.deploy.result }}"
+                    "${{ needs.deploy_runners.result }}"
+                    "${{ needs.deploy_lambda.result }}"
+                    "${{ needs.deploy_agentcore.result }}"
+                  )
+                  outcome="skipped"
+                  for r in "${results[@]}"; do
+                    if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
+                      outcome="failure"
+                      break
+                    elif [[ "$r" == "success" ]]; then
+                      outcome="success"
+                    fi
+                  done
+                  echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Update deploy message
+              continue-on-error: true
+              uses: ./.github/actions/slack-deploy-notification
+              with:
+                  bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+                  channel: ${{ vars.SLACK_DEPLOYS_CHANNEL_ID }}
+                  service: ${{ inputs.service }}
+                  stage: ${{ inputs.stage }}
+                  phase: result
+                  ts: ${{ needs.notify_start.outputs.ts }}
+                  started_at: ${{ needs.notify_start.outputs.started_at }}
+                  outcome: ${{ steps.outcome.outputs.outcome }}

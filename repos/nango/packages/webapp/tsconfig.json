@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        "target": "ES2021",
+        "lib": ["DOM", "DOM.Iterable", "ES2021"],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noImplicitAny": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "paths": {
+            "@/*": ["./src/*"]
+        }
+    },
+    "references": [
+        {
+            "path": "../frontend"
+        },
+        {
+            "path": "../types"
+        }
+    ],
+    "include": ["src"]
+}

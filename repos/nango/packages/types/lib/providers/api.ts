@@ -1,0 +1,59 @@
+import type { ApiEndpoint } from '../api.js';
+import type { AuthModeType } from '../auth/api.js';
+import type { McpOAuth2ClientRegistration, Provider, SimplifiedJSONSchema } from './provider.js';
+
+export type GetPublicProviders = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'GET';
+    Path: `/providers`;
+    Querystring: { search?: string | undefined; connect_session_token?: string };
+    Success: {
+        data: ApiProvider[];
+    };
+}>;
+export type ApiProvider = Provider & { name: string; logo_url: string };
+
+export type GetPublicProvider = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'GET';
+    Path: `/providers/:provider`;
+    Params: { provider: string };
+    Querystring?: { connect_session_token: string };
+    Success: {
+        data: ApiProvider;
+    };
+}>;
+
+export interface ApiProviderListItem {
+    name: string;
+    displayName: string;
+    defaultScopes?: string[] | undefined;
+    availableScopes?: string[] | undefined;
+    authMode: AuthModeType;
+    categories?: string[] | undefined;
+    docs: string;
+    docs_connect?: string | undefined;
+    preConfigured: boolean;
+    preConfiguredScopes: string[];
+    clientRegistration?: McpOAuth2ClientRegistration;
+    integration_config?: Record<string, SimplifiedJSONSchema> | undefined;
+}
+
+export type GetProviders = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'GET';
+    Path: '/api/v1/providers';
+    Success: {
+        data: ApiProviderListItem[];
+    };
+}>;
+
+export type GetProvider = ApiEndpoint<{
+    Audit: { kind: 'no-audit'; reason: 'non-auditable' };
+    Method: 'GET';
+    Path: '/api/v1/providers/:providerConfigKey';
+    Params: { providerConfigKey: string };
+    Success: {
+        data: ApiProviderListItem;
+    };
+}>;

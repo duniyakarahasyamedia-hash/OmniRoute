@@ -1,0 +1,135 @@
+import { Helmet } from 'react-helmet';
+import { Link } from 'react-router-dom';
+
+import { useMeta } from '../../hooks/useMeta';
+import { useUser } from '../../hooks/useUser';
+import DashboardLayout from '../../layout/DashboardLayout';
+import { globalEnv } from '../../utils/env';
+import { InsightChart } from './components/InsightChart';
+
+export const Homepage: React.FC = () => {
+    const { data: metaData } = useMeta();
+    const meta = metaData?.data;
+    const { user: me } = useUser();
+
+    if (!me || !meta) {
+        return null;
+    }
+
+    if (!globalEnv.features.logs) {
+        return (
+            <DashboardLayout>
+                <Helmet>
+                    <title>Homepage - Nango</title>
+                </Helmet>
+                <div className="flex justify-between items-center">
+                    <div className="flex flex-col gap-2">
+                        <h2 className="text-3xl font-semibold text-text-strong flex gap-4 items-center">Hello, {me.name}!</h2>
+                    </div>
+                </div>
+
+                <div className="flex gap-2 flex-col border border-border-muted rounded-md items-center text-text-strong text-center p-10 py-20 mt-4">
+                    <h2 className="text-xl text-center">Logs not configured</h2>
+                    <div className="text-sm text-text-muted">
+                        Follow{' '}
+                        <Link to="https://nango.dev/docs/guides/platform/self-hosting#logs" className="text-text-link">
+                            these instructions
+                        </Link>{' '}
+                        to configure logs and enable execution metrics in your dashboard.
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    return (
+        <DashboardLayout>
+            <Helmet>
+                <title>Homepage - Nango</title>
+            </Helmet>
+            <div className="flex justify-between items-center">
+                <div className="flex flex-col gap-2">
+                    <h2 className="text-3xl font-semibold text-text-strong flex gap-4 items-center">Hello, {me.name}!</h2>
+
+                    <div className="text-text-muted text-sm">Here’s your recent activity on Nango.</div>
+                </div>
+                <div className="text-text-strong text-sm">
+                    Last 14 days <code className="font-code text-xs text-text-secondary">(UTC)</code>
+                </div>
+            </div>
+            <div className="grid gap-8 grid-cols-[repeat(auto-fill,minmax(300px,470px))] mt-8">
+                {globalEnv.features.scripts && (
+                    <InsightChart
+                        title="Sync Executions"
+                        type="sync:run"
+                        desc=""
+                        help={
+                            <div>
+                                No sync executions in the last 14 days.{' '}
+                                <Link to="https://nango.dev/docs/guides/functions/syncs/sync-functions" className="underline text-text-strong">
+                                    Learn more
+                                </Link>
+                            </div>
+                        }
+                    />
+                )}
+                {globalEnv.features.scripts && (
+                    <InsightChart
+                        title="Action Executions"
+                        type="action"
+                        desc=""
+                        help={
+                            <div>
+                                No action executions in the last 14 days.{' '}
+                                <Link to="https://nango.dev/docs/guides/functions/action-functions" className="underline text-text-strong">
+                                    Learn more
+                                </Link>
+                            </div>
+                        }
+                    />
+                )}
+                <InsightChart
+                    title="Proxy Requests"
+                    type="proxy"
+                    desc=""
+                    help={
+                        <div>
+                            No proxy requests sent in the last 14 days.{' '}
+                            <Link to="https://nango.dev/docs/guides/platform/proxy-requests" className="underline text-text-strong">
+                                Learn more
+                            </Link>
+                        </div>
+                    }
+                />
+                {globalEnv.features.scripts && (
+                    <InsightChart
+                        title="Webhook Executions"
+                        type="webhook:incoming"
+                        desc=""
+                        help={
+                            <div>
+                                No webhook executions in the last 14 days.{' '}
+                                <Link to="https://nango.dev/docs/getting-started/use-cases/webhooks-from-external-apis" className="underline text-text-strong">
+                                    Learn more
+                                </Link>
+                            </div>
+                        }
+                    />
+                )}
+                <InsightChart
+                    title="Authorization"
+                    type="auth:create_connection"
+                    desc=""
+                    help={
+                        <div>
+                            No authorization attempted in the last 14 days.{' '}
+                            <Link to="https://nango.dev/docs/guides/auth/auth-guide" className="underline text-text-strong">
+                                Learn more
+                            </Link>
+                        </div>
+                    }
+                />
+            </div>
+        </DashboardLayout>
+    );
+};

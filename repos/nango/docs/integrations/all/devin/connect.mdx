@@ -1,0 +1,49 @@
+---
+title: Connect to Devin
+sidebarTitle: Devin
+---
+
+
+# Overview
+
+To authenticate with Devin, use one of these credentials:
+
+1. **v3 credential (`cog_`)** - A service-user API key or personal access token for the current Devin API.
+2. **Legacy v1 API key (`apk_user_`)** - An existing key for the legacy sessions API.
+
+New integrations should use a v3 service-user API key.
+
+### Prerequisites:
+
+- You must have an account with Devin.
+
+### Instructions:
+
+#### Step 1: Finding your API key
+
+For a v3 service-user API key:
+
+1. Open your organization or enterprise settings in Devin.
+2. Open **Service users** and create or select a service user.
+3. Assign a role with the permissions your integration needs.
+4. Generate an API key and copy it immediately. Devin only displays it once.
+
+<img src="/integrations/all/devin/service-users.png" />
+
+For a legacy v1 API key:
+
+1. Log in to your [Devin account](https://app.devin.ai/).
+2. Open **API Settings**.
+3. Reveal an existing `apk_user_` key or revoke and regenerate it.
+
+See [Devin API authentication](https://docs.devin.ai/api-reference/authentication) for credential and permission details.
+
+
+#### Step 2: Enter credentials in the Connect UI
+
+Once you have your credential:
+1. Open the form where you need to authenticate with Devin.
+2. Enter the `cog_` or `apk_user_` credential in the API key field.
+3. Submit the form, and you should be successfully authenticated.
+
+You are now connected to Devin.

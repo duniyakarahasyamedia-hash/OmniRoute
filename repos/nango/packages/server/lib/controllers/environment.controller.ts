@@ -1,0 +1,85 @@
+import { accountService, environmentService, errorManager, generateSlackConnectionId, hmacService } from '@nangohq/shared';
+import { flags } from '@nangohq/utils';
+
+import { envs } from '../env.js';
+import { requireEnvironment } from '../utils/asyncWrapper.js';
+
+import type { RequestLocals } from '../utils/express.js';
+import type { NextFunction, Request, Response } from 'express';
+
+class EnvironmentController {
+    getHmacDigest(req: Request, res: Response<any, RequestLocals>, next: NextFunction) {
+        try {
+            const environment = requireEnvironment(req, res);
+            if (!environment) {
+                return;
+            }
+            const { provider_config_key: providerConfigKey, connection_id: connectionId } = req.query;
+
+            if (!providerConfigKey) {
+                errorManager.errRes(res, 'missing_provider_config_key');
+                return;
+            }
+
+            if (!connectionId) {
+                errorManager.errRes(res, 'missing_connection_id');
+                return;
+            }
+
+            if (environment.hmac_enabled && environment.hmac_key) {
+                const digest = hmacService.computeDigest({ key: environment.hmac_key, values: [providerConfigKey as string, connectionId as string] });
+                res.status(200).send({ hmac_digest: digest });
+            } else {
+                res.status(200).send({ hmac_digest: null });
+            }
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async getAdminAuthInfo(req: Request, res: Response<any, RequestLocals>, next: NextFunction) {
+        try {
+            if (!flags.hasAdminCapabilities || !envs.NANGO_ADMIN_UUID) {
+                res.status(400).send({ error: { code: 'feature_disabled', message: 'Admin capabilities are not enabled' } });
+                return;
+            }
+
+            const { account } = res.locals;
+            const callerEnvironment = requireEnvironment(req, res);
+            if (!callerEnvironment) {
+                return;
+            }
+
+            const expectedConnectionId = generateSlackConnectionId(account.uuid, callerEnvironment.id);
+            const { connection_id: connectionId } = req.query;
+
+            if (connectionId !== expectedConnectionId) {
+                res.status(403).json({ error: { code: 'forbidden', message: 'You do not have permission to perform this action' } });
+                return;
+            }
+
+            const integration_key = envs.NANGO_SLACK_INTEGRATION_KEY;
+            const env = 'prod';
+            const info = await accountService.getAccountAndEnvironmentIdByUUID(envs.NANGO_ADMIN_UUID, env);
+
+            if (!info) {
+                errorManager.errRes(res, 'account_not_found');
+                return;
+            }
+
+            const environment = await environmentService.getById(info.environmentId);
+            if (!environment) {
+                errorManager.errRes(res, 'account_not_found');
+                return;
+            }
+
+            const digest = hmacService.computeDigest({ key: environment.hmac_key!, values: [integration_key, expectedConnectionId] });
+
+            res.status(200).send({ hmac_digest: digest, public_key: environment.public_key, integration_key });
+        } catch (err) {
+            next(err);
+        }
+    }
+}
+
+export default new EnvironmentController();

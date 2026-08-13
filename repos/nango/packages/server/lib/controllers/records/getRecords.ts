@@ -1,0 +1,132 @@
+import tracer from 'dd-trace';
+import * as z from 'zod';
+
+import { records } from '@nangohq/records';
+import { connectionService } from '@nangohq/shared';
+import { ENVS, metrics, parseEnvs, zodErrorToHTTP } from '@nangohq/utils';
+
+import { connectionIdSchema, modelSchema, providerConfigKeySchema, variantSchema } from '../../helpers/validation.js';
+import { asyncWrapperWithEnvironment } from '../../utils/asyncWrapper.js';
+import { egressTelemetryRecorder } from '../../utils/egressTelemetry.js';
+
+import type { GetPublicRecords } from '@nangohq/types';
+
+const envs = parseEnvs(ENVS);
+
+export const getLookbackCutoff = () => new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+const withinLookback = z
+    .string()
+    .datetime()
+    .refine((val) => new Date(val) >= getLookbackCutoff(), { message: 'must be within the last 12 months' });
+
+export const validationQuery = z
+    .object({
+        model: modelSchema,
+        variant: variantSchema.optional(),
+        delta: withinLookback.optional(),
+        modified_after: withinLookback.optional(),
+        limit: z.coerce.number().min(1).max(10000).default(100).optional(),
+        filter: z
+            .string()
+            .transform((value) => value.split(','))
+            .pipe(z.array(z.enum(['added', 'updated', 'deleted', 'ADDED', 'UPDATED', 'DELETED'])))
+            .transform<GetPublicRecords['Querystring']['filter']>((value) => value.join(',') as GetPublicRecords['Querystring']['filter'])
+            .optional(),
+        cursor: z.string().min(1).max(1000).optional(),
+        // It's an array because external ids can contain any string which makes them more susceptible to bad encoding/decoding
+        // Also it's easier to validate
+        ids: z
+            .union([
+                z.string().min(1).max(256), // There is no diff between a normal query param and an array with one item
+                z.array(z.string().min(1).max(256)).max(100)
+            ])
+            .transform((val) => (Array.isArray(val) ? val : [val]))
+            .optional()
+    })
+    .strict();
+export const validationHeaders = z
+    .object({
+        'connection-id': connectionIdSchema,
+        'provider-config-key': providerConfigKeySchema
+    })
+    .strict();
+
+export const getPublicRecords = asyncWrapperWithEnvironment<GetPublicRecords>(async (req, res) => {
+    const valQuery = validationQuery.safeParse(req.query);
+    if (!valQuery.success) {
+        res.status(400).send({ error: { code: 'invalid_query_params', errors: zodErrorToHTTP(valQuery.error) } });
+        return;
+    }
+
+    const valHeaders = validationHeaders.safeParse({ 'connection-id': req.get('connection-id'), 'provider-config-key': req.get('provider-config-key') });
+    if (!valHeaders.success) {
+        res.status(400).send({ error: { code: 'invalid_headers', errors: zodErrorToHTTP(valHeaders.error) } });
+        return;
+    }
+
+    const { environment, account, plan } = res.locals;
+    const headers: GetPublicRecords['Headers'] = valHeaders.data;
+    const query: GetPublicRecords['Querystring'] = valQuery.data;
+
+    const { error, response: connection } = await connectionService.getConnection(headers['connection-id'], headers['provider-config-key'], environment.id);
+
+    if (error || !connection) {
+        res.status(400).send({
+            error: { code: 'unknown_connection', message: 'Provided ConnectionId and ProviderConfigKey does not match a valid connection' }
+        });
+        return;
+    }
+
+    await tracer.trace('server.getRecords', async (span) => {
+        const result = await records.getRecords({
+            connectionId: connection.id,
+            model: query.variant && query.variant !== 'base' ? `${query.model}::${query.variant}` : query.model,
+            modifiedAfter: query.delta || query.modified_after,
+            limit: query.limit,
+            filter: query.filter,
+            cursor: query.cursor,
+            externalIds: query.ids,
+            plan
+        });
+
+        if (result.isErr()) {
+            span.setTag('error', result.error);
+            res.status(500).send({ error: { code: 'server_error', message: 'Failed to fetch records' } });
+            return;
+        }
+
+        res.send({
+            next_cursor: result.value.next_cursor || null,
+            records: result.value.records
+        });
+
+        const recordsCount = result.value.records.length;
+        // using the response content-length header as the records size metric in order to avoid stringifying the response body
+        const responseSize = parseInt(res.get('content-length') || '0');
+
+        metrics.increment(metrics.Types.GET_RECORDS_COUNT, recordsCount, { accountId: account.id });
+        metrics.increment(metrics.Types.GET_RECORDS_SIZE_IN_BYTES, responseSize, { accountId: account.id });
+        metrics.distribution(metrics.Types.GET_RECORDS_RESPONSE_SIZE_BYTES, responseSize);
+
+        egressTelemetryRecorder.record({
+            accountId: account.id,
+            environmentId: environment.id,
+            environmentName: environment.name,
+            integrationId: headers['provider-config-key'],
+            connectionId: connection.connection_id,
+            callsite: 'get_/records',
+            egressedBytes: responseSize,
+            count: 1
+        });
+
+        if (result.value.budgetTruncated) {
+            metrics.increment(metrics.Types.RECORDS_BUDGET_TRUNCATE, 1, {
+                accountId: account.id,
+                service: 'server',
+                dryRun: String(envs.RECORDS_MAX_RESPONSE_SIZE_DRY_RUN)
+            });
+        }
+
+        span.setTag('response.size_bytes', responseSize);
+    });
+});

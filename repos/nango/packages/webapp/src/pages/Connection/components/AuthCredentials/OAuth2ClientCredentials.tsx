@@ -1,0 +1,61 @@
+import { RefreshCwIcon } from 'lucide-react';
+
+import { Button, FieldLabel } from '@nangohq/design-system';
+
+import { PermissionGate } from '@/components/patterns/PermissionGate';
+import { SecretInput } from '@/components/patterns/SecretInput';
+import { useRefreshConnectionWithToast } from '@/hooks/useRefreshConnectionWithToast';
+
+import type { ApiConnectionFull, OAuth2ClientCredentials } from '@nangohq/types';
+
+export const OAuth2ClientCredentialsComponent: React.FC<{
+    credentials: OAuth2ClientCredentials;
+    connection: ApiConnectionFull;
+    providerConfigKey: string;
+    canRead: boolean;
+}> = ({ credentials, connection, providerConfigKey, canRead }) => {
+    const { forceRefresh, isRefreshing } = useRefreshConnectionWithToast(connection, providerConfigKey);
+
+    return (
+        <>
+            <div className="flex flex-col gap-2">
+                <FieldLabel htmlFor="token">Token</FieldLabel>
+                <div className="flex gap-2 items-center">
+                    <SecretInput id="token" value={credentials.token} disabled copy canRead={canRead} />
+                    <PermissionGate condition={canRead} asChild>
+                        {(allowed) => (
+                            <Button variant="outline" size="md" onClick={forceRefresh} loading={isRefreshing} disabled={!allowed}>
+                                <RefreshCwIcon />
+                                Refresh
+                            </Button>
+                        )}
+                    </PermissionGate>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <FieldLabel htmlFor="client_id">Client ID</FieldLabel>
+                <SecretInput id="client_id" value={credentials.client_id} disabled copy canRead={canRead} />
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <FieldLabel htmlFor="client_secret">Client secret</FieldLabel>
+                <SecretInput id="client_secret" value={credentials.client_secret} disabled copy canRead={canRead} />
+            </div>
+
+            {credentials.client_certificate && (
+                <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="client_certificate">Client certificate</FieldLabel>
+                    <SecretInput id="client_certificate" value={credentials.client_certificate} disabled copy canRead={canRead} />
+                </div>
+            )}
+
+            {credentials.client_private_key && (
+                <div className="flex flex-col gap-2">
+                    <FieldLabel htmlFor="client_private_key">Client private Key</FieldLabel>
+                    <SecretInput id="client_private_key" value={credentials.client_private_key} disabled copy canRead={canRead} />
+                </div>
+            )}
+        </>
+    );
+};
