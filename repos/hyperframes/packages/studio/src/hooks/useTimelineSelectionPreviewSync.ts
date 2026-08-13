@@ -1,0 +1,170 @@
+import { useEffect, useMemo, useRef } from "react";
+import type { TimelineElement } from "../player";
+import type { DomEditSelection } from "../components/editor/domEditing";
+import { resolveTimelineIdForSelection } from "../utils/studioHelpers";
+import { logSelect } from "../utils/selectDebug";
+
+interface UseTimelineSelectionPreviewSyncParams {
+  selectedElementId: string | null;
+  selectedElementIds: Set<string>;
+  timelineElements: TimelineElement[];
+  domEditSelection: DomEditSelection | null;
+  domEditGroupSelections: DomEditSelection[];
+  activeCompPath: string | null;
+  buildDomSelectionForTimelineElement: (
+    element: TimelineElement,
+  ) => Promise<DomEditSelection | null>;
+  applyDomSelection: (
+    selection: DomEditSelection | null,
+    options?: { revealPanel?: boolean; additive?: boolean; preserveGroup?: boolean },
+  ) => void;
+  applyMarqueeSelection: (selections: DomEditSelection[], additive: boolean) => void;
+  onSelectionNotFound: () => void;
+}
+
+function orderSelectedIds(ids: Set<string>, anchor: string | null): string[] {
+  const ordered = [...ids];
+  if (!anchor || !ids.has(anchor)) return ordered;
+  return [anchor, ...ordered.filter((id) => id !== anchor)];
+}
+
+function selectionIdsMatch(
+  currentIds: string[],
+  selectedIds: string[],
+  currentAnchor: string | null,
+  wantedAnchor: string | null,
+): boolean {
+  // Compare as sets in BOTH directions: length equality misreads duplicates (two DOM
+  // children resolving to the same clip id) as a full match and skips mirroring the
+  // members that never made it into the preview.
+  const current = new Set(currentIds);
+  const selected = new Set(selectedIds);
+  if (current.size !== selected.size) return false;
+  for (const id of selected) {
+    if (!current.has(id)) return false;
+  }
+  // The primary/anchor must also agree, or a change of just the anchor within the
+  // same set would never re-sync the preview's primary selection.
+  return currentAnchor === wantedAnchor;
+}
+
+export function useTimelineSelectionPreviewSync({
+  selectedElementId,
+  selectedElementIds,
+  timelineElements,
+  domEditSelection,
+  domEditGroupSelections,
+  activeCompPath,
+  buildDomSelectionForTimelineElement,
+  applyDomSelection,
+  applyMarqueeSelection,
+  onSelectionNotFound,
+}: UseTimelineSelectionPreviewSyncParams): void {
+  const selectedIds = useMemo(
+    () => orderSelectedIds(selectedElementIds, selectedElementId),
+    [selectedElementId, selectedElementIds],
+  );
+  const selectedKey = selectedIds.join("\0");
+  const domEditSelectionRef = useRef(domEditSelection);
+  const domEditGroupSelectionsRef = useRef(domEditGroupSelections);
+  const lastSyncedSelectedKeyRef = useRef("");
+  const missingSelectionKeyRef = useRef("");
+  domEditSelectionRef.current = domEditSelection;
+  domEditGroupSelectionsRef.current = domEditGroupSelections;
+
+  useEffect(() => {
+    const previousSelectedKey = lastSyncedSelectedKeyRef.current;
+    lastSyncedSelectedKeyRef.current = selectedKey;
+    const currentDomEditSelection = domEditSelectionRef.current;
+    const currentDomEditGroupSelections = domEditGroupSelectionsRef.current;
+    const currentSelections =
+      currentDomEditGroupSelections.length > 1
+        ? currentDomEditGroupSelections
+        : currentDomEditSelection
+          ? [currentDomEditSelection]
+          : [];
+    const currentIds = currentSelections
+      .map((selection) =>
+        resolveTimelineIdForSelection(selection, timelineElements, activeCompPath),
+      )
+      .filter((id): id is string => Boolean(id));
+    const currentAnchor = currentDomEditSelection
+      ? resolveTimelineIdForSelection(currentDomEditSelection, timelineElements, activeCompPath)
+      : null;
+
+    if (selectedIds.length === 0) {
+      missingSelectionKeyRef.current = "";
+      // The timeline holds nothing, so the canvas is about to hold nothing either.
+      // This is the path that silently drops a selection the user can still see.
+      logSelect("timeline-empty", {
+        had: currentIds.length,
+        previousKey: previousSelectedKey.length > 0,
+        clearing: previousSelectedKey.length > 0 && currentIds.length > 0,
+      });
+      if (previousSelectedKey.length > 0 && currentIds.length > 0) {
+        applyDomSelection(null, { revealPanel: false });
+      }
+      return;
+    }
+    if (selectionIdsMatch(currentIds, selectedIds, currentAnchor, selectedElementId)) {
+      missingSelectionKeyRef.current = "";
+      return;
+    }
+
+    let cancelled = false;
+    const syncSelection = async () => {
+      const selections: DomEditSelection[] = [];
+      let resolvableCount = 0;
+      for (const id of selectedIds) {
+        const element = timelineElements.find((item) => (item.key ?? item.id) === id);
+        if (!element) continue;
+        resolvableCount += 1;
+        const selection = await buildDomSelectionForTimelineElement(element);
+        if (selection) selections.push(selection);
+      }
+      if (cancelled) return;
+      // The store is the source of truth: applying a partial set would write that
+      // shrunk set back and silently drop the members whose DOM node was not ready.
+      // Bail instead; a later effect run (on timelineElements/DOM change) applies the
+      // full set once every resolvable member has a live node.
+      if (selections.length < resolvableCount) {
+        if (missingSelectionKeyRef.current !== selectedKey) {
+          missingSelectionKeyRef.current = selectedKey;
+          onSelectionNotFound();
+        }
+        return;
+      }
+      missingSelectionKeyRef.current = "";
+      logSelect("timeline-sync", {
+        wanted: selectedIds.length,
+        had: currentIds.length,
+        resolved: selections.length,
+      });
+      if (selections.length === 0) {
+        applyDomSelection(null, { revealPanel: false });
+      } else if (selections.length === 1) {
+        applyDomSelection(selections[0]);
+      } else {
+        applyMarqueeSelection(selections, false);
+      }
+    };
+
+    void syncSelection();
+    return () => {
+      cancelled = true;
+    };
+    // DOM selection changes are read through refs. Depending on them directly
+    // would let the preview-to-timeline echo cancel an in-flight timeline click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeCompPath,
+    applyDomSelection,
+    applyMarqueeSelection,
+    buildDomSelectionForTimelineElement,
+    onSelectionNotFound,
+    selectedElementId,
+    selectedIds,
+    selectedKey,
+    timelineElements,
+  ]);
+}
