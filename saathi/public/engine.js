@@ -182,9 +182,12 @@ const YT = (() => {
     return pick(hooks, topic + channel.name);
   }
 
-  function generateTopics(channel) {
+  function generateTopics(channel, liveTitles = []) {
     const pack = packFor(channel);
-    const seeds = [...pack.trending, ...pack.evergreen, ...pack.gaps, ...pack.problems];
+    const liveSeeds = liveTitles
+      .slice(0, 5)
+      .map((t) => `What they missed in “${String(t).replace(/^Angle on:\s*/i, "")}”`);
+    const seeds = [...liveSeeds, ...pack.trending, ...pack.evergreen, ...pack.gaps, ...pack.problems];
     const ideas = [];
     const used = new Set();
     for (let i = 0; i < seeds.length && ideas.length < 10; i++) {
@@ -245,9 +248,20 @@ const YT = (() => {
       ],
       gaps: pack.gaps,
       formats: pack.formats,
+      live: [],
       recommendation:
         `Lead with ${pack.trending[0]}. Evergreen backbone: ${pack.evergreen[0]}. Gap nobody owns cleanly: ${pack.gaps[0]}.`,
     };
+  }
+
+  function mergeLive(research, videos) {
+    const next = { ...(research || {}), live: videos || [] };
+    const titles = (videos || []).map((v) => v.title).filter(Boolean);
+    if (titles.length) {
+      next.trending = [...titles.slice(0, 5), ...(research?.trending || [])].slice(0, 8);
+      next.recommendation = `Live YouTube is talking about “${titles[0]}”. Unique angle: do the version they skipped. ${research?.recommendation || ""}`;
+    }
+    return next;
   }
 
   function deepResearch(topic, channel) {
@@ -456,6 +470,7 @@ const YT = (() => {
       pack: null,
       production: null,
       upload: null,
+      media: { thumbs: [], selectedThumb: null, voices: [], previewUrl: "", previewName: "", ytVideoId: "", liveVideos: [] },
     };
   }
 
@@ -463,7 +478,10 @@ const YT = (() => {
     const channel = project.channel;
     const next = { ...project, stage };
     if (stage === "research") next.research = researchMarket(channel);
-    if (stage === "topics") next.topics = generateTopics(channel);
+    if (stage === "topics") {
+      const liveTitles = (next.research?.live || []).map((v) => v.title);
+      next.topics = generateTopics(channel, liveTitles);
+    }
     if (stage === "deep") {
       if (!next.selectedTopic && next.topics[0]) next.selectedTopic = next.topics[0];
       const topic = next.selectedTopic?.topic || channel.subNiche;
@@ -547,6 +565,7 @@ const YT = (() => {
     productionKit,
     uploadPack,
     emptyProject,
+    mergeLive,
     runStage,
     produceAll,
     masterPrompt,

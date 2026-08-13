@@ -230,6 +230,15 @@ button:hover { border-color: rgba(255,45,45,0.45); }
 .badge.free { background: rgba(62,224,176,0.15); color: var(--mint); }
 .badge.free-key { background: rgba(245,193,108,0.15); color: var(--gold); }
 .badge.paid { background: rgba(255,45,45,0.12); color: #ff8b8b; }
+.yt-ok { color: var(--mint); font-size: 12px; }
+.thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.thumbs img { width: 100%; border-radius: 10px; display: block; aspect-ratio: 16/9; object-fit: cover; }
+.thumb-pick { border: 2px solid transparent; border-radius: 12px; overflow: hidden; cursor: pointer; padding: 0; background: none; }
+.thumb-pick.on { border-color: var(--red); }
+.live-vid { display: grid; grid-template-columns: 88px 1fr; gap: 8px; margin-bottom: 8px; }
+.live-vid img { width: 88px; height: 50px; object-fit: cover; border-radius: 8px; }
+.voice-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+video.preview { width: 100%; border-radius: 12px; background: #000; margin-top: 8px; }
 
 @media (max-width: 1100px) {
   .app { grid-template-columns: 1fr; }

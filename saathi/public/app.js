@@ -5,7 +5,17 @@ const STORE = {
   settings: "saathi.settings.v2",
 };
 
-const DEFAULT_SETTINGS = { provider: "auto", apiKey: "", model: "openai" };
+const DEFAULT_SETTINGS = {
+  provider: "auto",
+  apiKey: "",
+  model: "openai",
+  ytApiKey: "",
+  ytClientId: "",
+  ytToken: "",
+  ytExpires: 0,
+  ytChannelTitle: "",
+  ytChannelId: "",
+};
 
 function currentModelMeta() {
   const id = state.settings.model;
@@ -40,15 +50,34 @@ function loadStudio() {
   return [];
 }
 
+function slimMedia(media) {
+  if (!media) return { thumbs: [], selectedThumb: null, voices: [], previewUrl: "", previewName: "", ytVideoId: "", liveVideos: [] };
+  return {
+    thumbs: (media.thumbs || []).filter((t) => t.src && !String(t.src).startsWith("blob:")),
+    selectedThumb: media.selectedThumb || null,
+    voices: [],
+    previewUrl: "",
+    previewName: media.previewName || "",
+    ytVideoId: media.ytVideoId || "",
+    liveVideos: media.liveVideos || [],
+  };
+}
+
 function persist() {
-  localStorage.setItem(STORE.studio, JSON.stringify({ projects: state.projects }));
+  const projects = state.projects.map((p) => ({ ...p, media: slimMedia(p.media) }));
+  localStorage.setItem(STORE.studio, JSON.stringify({ projects }));
   localStorage.setItem("saathi.channel.v2", JSON.stringify(state.channel));
   localStorage.setItem(STORE.settings, JSON.stringify(state.settings));
   fetch("/api/studio", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ channel: state.channel, projects: state.projects }),
+    body: JSON.stringify({ channel: state.channel, projects }),
   }).catch(() => {});
+}
+
+function ensureMedia(p) {
+  if (!p.media) p.media = slimMedia(null);
+  return p.media;
 }
 
 function project() {
@@ -110,7 +139,21 @@ function renderProjects() {
     .join("");
 }
 
+function renderYtCard() {
+  const on = Tube.connected(state.settings);
+  const el = $("#ytStatus");
+  if (!el) return;
+  el.textContent = on
+    ? `Connected · ${state.settings.ytChannelTitle || "YouTube"}`
+    : state.settings.ytApiKey
+      ? "API key saved · search only"
+      : "Not connected";
+  if ($("#ytApiKey") && document.activeElement !== $("#ytApiKey")) $("#ytApiKey").value = state.settings.ytApiKey || "";
+  if ($("#ytClientId") && document.activeElement !== $("#ytClientId")) $("#ytClientId").value = state.settings.ytClientId || "";
+}
+
 function renderRail() {
+  renderYtCard();
   const c = state.channel;
   $("#channelCard").innerHTML = `
     <h3>${escapeHtml(c.name)}</h3>
@@ -207,8 +250,19 @@ function viewResearch(p) {
   if (!r) {
     return `<div class="card"><p>No research yet.</p><button class="btn-red" data-act="goto" data-stage="research">Run market research</button></div>`;
   }
+  const live = p.research?.live || p.media?.liveVideos || [];
   return `<div class="row"><h2 style="margin:0 0 10px">Market research</h2>
+      <button data-act="live-search">Live YouTube search</button>
       <button class="btn-red" data-act="goto" data-stage="topics">Generate 10 topics</button></div>
+    ${
+      live.length
+        ? `<div class="card" style="margin-bottom:10px"><h3>Live YouTube</h3>${live
+            .map(
+              (v) => `<div class="live-vid">${v.thumb ? `<img src="${escapeHtml(v.thumb)}" alt="">` : "<div></div>"}<div><b>${escapeHtml(v.title)}</b><small>${escapeHtml(v.channel)}</small></div></div>`,
+            )
+            .join("")}</div>`
+        : `<div class="card" style="margin-bottom:10px"><span>Connect YouTube or hit Live search — public Invidious is used if no key.</span></div>`
+    }
     <div class="grid-2">
       <div class="card"><h3>Trending</h3><div class="pre">${r.trending.map((x) => "• " + escapeHtml(x)).join("\n")}</div></div>
       <div class="card"><h3>Evergreen</h3><div class="pre">${r.evergreen.map((x) => "• " + escapeHtml(x)).join("\n")}</div></div>
@@ -272,13 +326,25 @@ function viewScript(p) {
 function viewPackage(p) {
   const pack = p?.pack;
   if (!pack) return `<div class="card"><button class="btn-red" data-act="goto" data-stage="package">Build package</button></div>`;
+  const thumbs = p.media?.thumbs || [];
   return `<div class="row"><h2 style="margin:0 0 10px">Packaging</h2>
+      <button data-act="gen-thumbs">Generate thumbnails</button>
       <button class="btn-red" data-act="goto" data-stage="production">Production kit</button></div>
+    <div class="card" style="margin-bottom:10px"><h3>Thumbnail options</h3>
+      ${
+        thumbs.length
+          ? `<div class="thumbs">${thumbs
+              .map(
+                (t) => `<button class="thumb-pick ${p.media.selectedThumb === t.id ? "on" : ""}" data-act="pick-thumb" data-tid="${escapeHtml(t.id)}"><img src="${escapeHtml(t.src)}" alt="${escapeHtml(t.kind)}"></button>`,
+              )
+              .join("")}</div>`
+          : `<p>Generate studio + AI thumbnails, then pick one.</p>`
+      }
+      <p><b>${escapeHtml(pack.thumbnail.text)}</b> · ${escapeHtml(pack.thumbnail.visual)}</p>
+    </div>
     <div class="grid-2">
       <div class="card"><h3>Titles</h3><div class="pre">${pack.titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}</div></div>
-      <div class="card"><h3>Thumbnail</h3>
-        <p><b>${escapeHtml(pack.thumbnail.text)}</b></p>
-        <p>${escapeHtml(pack.thumbnail.visual)}</p>
+      <div class="card"><h3>Thumbnail brief</h3>
         <p>${escapeHtml(pack.thumbnail.colors)}</p>
         <small>${escapeHtml(pack.thumbnail.avoid)}</small>
       </div>
@@ -304,7 +370,15 @@ function viewUpload(p) {
   const u = p?.upload;
   if (!u) return `<div class="card"><button class="btn-red" data-act="goto" data-stage="upload">Build upload pack</button></div>`;
   return `<div class="row"><h2 style="margin:0 0 10px">Upload pack</h2>
-      <button class="btn-red" data-act="export">Download full pack</button></div>
+      <button data-act="render-preview">Render preview</button>
+      <button class="btn-red" data-act="yt-publish">Publish to YouTube</button>
+      <button data-act="export">Download full pack</button></div>
+    ${
+      p.media?.ytVideoId
+        ? `<div class="card" style="margin-bottom:10px"><h3>Published</h3><a href="https://youtu.be/${escapeHtml(p.media.ytVideoId)}" target="_blank" rel="noreferrer">https://youtu.be/${escapeHtml(p.media.ytVideoId)}</a></div>`
+        : `<div class="card" style="margin-bottom:10px"><span>${Tube.connected(state.settings) ? "YouTube connected. Render a preview, then publish as Private." : "Connect YouTube in the right rail to publish. Preview video still downloads locally."}</span></div>`
+    }
+    ${p.media?.previewUrl ? `<video class="preview" controls src="${escapeHtml(p.media.previewUrl)}"></video>` : ""}
     <div class="grid-2">
       <div class="card"><h3>File / playlist</h3>
         <p><b>${escapeHtml(u.filename)}</b></p>
@@ -392,12 +466,113 @@ function goto(stage) {
   setStatus("", `${YT.STAGES[target].label} ready`);
 }
 
-function autopilot(topicText) {
-  setStatus("thinking", "Producing full video system…");
-  const p = YT.produceAll(state.channel, topicText);
+function queryForSearch(p) {
+  const ch = p?.channel || state.channel;
+  return `${ch.niche} ${ch.country} ${ch.language} ${p?.selectedTopic?.topic || ch.subNiche || ""}`.trim();
+}
+
+async function liveSearch(p = project()) {
+  if (!p) return [];
+  setStatus("thinking", "Searching YouTube…");
+  const videos = await Tube.search(queryForSearch(p), state.settings, /india/i.test(state.channel.country) ? "IN" : "US");
+  ensureMedia(p);
+  p.media.liveVideos = videos;
+  if (p.research) p.research = YT.mergeLive(p.research, videos);
   applyProject(p);
-  setStatus("", "Full pack ready");
-  return p;
+  setStatus("", videos.length ? `${videos.length} live videos found` : "No live hits — using local research");
+  return videos;
+}
+
+async function genThumbs(p = project()) {
+  if (!p?.pack) goto("package");
+  p = project();
+  ensureMedia(p);
+  setStatus("thinking", "Painting thumbnails…");
+  const studio = MediaKit.studioThumbs(p);
+  const ai = MediaKit.aiThumbUrls(p);
+  p.media.thumbs = [...studio, ...ai];
+  p.media.selectedThumb = studio[0].id;
+  applyProject(p);
+  setStatus("", "Thumbnails ready — pick one");
+}
+
+async function genVoice(p = project()) {
+  if (!p?.script) goto("script");
+  p = project();
+  ensureMedia(p);
+  setStatus("thinking", "Generating voiceover…");
+  p.media.voices = await MediaKit.buildVoiceovers(p, 6);
+  applyProject(p);
+  const ok = p.media.voices.filter((v) => v.ok).length;
+  setStatus("", ok ? `${ok} VO lines ready` : "Cloud VO blocked — use Speak for browser voice");
+}
+
+async function renderPreview(p = project()) {
+  if (!p?.script) {
+    goto("script");
+    p = project();
+  }
+  ensureMedia(p);
+  if (!p.media.thumbs?.length) await genThumbs(p);
+  p = project();
+  setStatus("thinking", "Rendering preview video…");
+  const out = await MediaKit.renderPreview(p, (n) => setStatus("thinking", `Rendering ${n}%`));
+  p.media.previewUrl = out.url;
+  p.media.previewBlob = out.blob;
+  p.media.previewName = out.name;
+  applyProject(p);
+  setStatus("", "Preview video ready");
+  return out;
+}
+
+async function publishYouTube() {
+  let p = project();
+  if (!p) return;
+  if (!Tube.connected(state.settings)) {
+    setStatus("", "Connect YouTube first");
+    return;
+  }
+  if (!p.media?.previewBlob) await renderPreview(p);
+  p = project();
+  setStatus("thinking", "Uploading to YouTube…");
+  const meta = {
+    title: p.pack?.titles?.[0] || p.title,
+    description: p.pack?.description || "",
+    tags: p.pack?.tags || [],
+    privacy: "private",
+  };
+  const video = await Tube.uploadVideo(p.media.previewBlob, meta, state.settings);
+  p.media.ytVideoId = video.id;
+  const thumb = (p.media.thumbs || []).find((t) => t.id === p.media.selectedThumb) || p.media.thumbs?.[0];
+  if (thumb?.src) {
+    try {
+      const blob = await MediaKit.dataUrlToBlob(thumb.src);
+      await Tube.setThumbnail(video.id, blob, state.settings);
+    } catch {
+      /* thumbnail optional */
+    }
+  }
+  applyProject(p);
+  setStatus("", `Published privately · ${video.id}`);
+}
+
+async function connectRemaining() {
+  saveChannelFromForm();
+  setStatus("thinking", "Connecting the full desk…");
+  let p = project();
+  if (!p?.upload) p = autopilot();
+  await liveSearch(p);
+  p = project();
+  if (p.research?.live?.length && p.topics?.length) {
+    p.topics = YT.generateTopics(p.channel, p.research.live.map((v) => v.title));
+    if (!p.selectedTopic) p.selectedTopic = p.topics[0];
+    applyProject(p);
+  }
+  await genThumbs(project());
+  await genVoice(project());
+  await renderPreview(project());
+  goto("upload");
+  setStatus("", Tube.connected(state.settings) ? "Desk connected. Publish when ready." : "Media connected. Login YouTube to publish.");
 }
 
 function exportMarkdown() {
@@ -540,7 +715,23 @@ function localDirect(text) {
   }
   if (/upload|publish/.test(lower)) {
     goto("upload");
-    return "Upload pack ready: filename, playlist, shorts cutdowns, first-hour list.";
+    return "Upload pack ready. Connect YouTube to publish the preview as Private.";
+  }
+  if (/thumb|thumbnail/.test(lower)) {
+    genThumbs();
+    return "Generating studio + AI thumbnails.";
+  }
+  if (/voice|voiceover|tts/.test(lower)) {
+    genVoice();
+    return "Generating voiceover lines.";
+  }
+  if (/render|preview video|video bana/.test(lower)) {
+    renderPreview();
+    return "Rendering preview cut.";
+  }
+  if (/connect|live search|youtube/.test(lower)) {
+    connectRemaining();
+    return "Connecting remaining pieces: live search, thumbs, VO, preview.";
   }
   if (/model|llm|gpt|claude|gemini|groq|kaun sa model/.test(lower)) {
     const list = allModels()
@@ -604,10 +795,29 @@ function bind() {
     state.activeId = state.projects[0].id;
   }
 
+  const oauth = Tube.consumeHash();
+  if (oauth) {
+    state.settings.ytToken = oauth.token;
+    state.settings.ytExpires = oauth.expires;
+    persist();
+    Tube.myChannel(state.settings)
+      .then((ch) => {
+        if (!ch) return;
+        state.settings.ytChannelTitle = ch.title;
+        state.settings.ytChannelId = ch.id;
+        persist();
+        renderYtCard();
+        setStatus("", `YouTube connected · ${ch.title}`);
+      })
+      .catch(() => setStatus("", "YouTube token saved"));
+  }
+
   $("#settingsProvider").value = state.settings.provider || "auto";
   $("#settingsKey").value = state.settings.apiKey || "";
   fillModelSelect();
   if (state.settings.model) $("#settingsModel").value = state.settings.model;
+  if ($("#ytApiKey")) $("#ytApiKey").value = state.settings.ytApiKey || "";
+  if ($("#ytClientId")) $("#ytClientId").value = state.settings.ytClientId || "";
 
   renderAll();
 
@@ -698,6 +908,23 @@ function bind() {
       goto("deep");
     }
     if (act === "export") downloadPack();
+    if (act === "live-search") liveSearch();
+    if (act === "gen-thumbs") genThumbs();
+    if (act === "pick-thumb") {
+      const p = ensureProject();
+      ensureMedia(p);
+      p.media.selectedThumb = btn.dataset.tid;
+      applyProject(p);
+    }
+    if (act === "gen-voice") genVoice();
+    if (act === "speak-line") {
+      const line = project()?.media?.voices?.[Number(btn.dataset.idx)];
+      if (line?.text) MediaKit.speakLine(line.text);
+    }
+    if (act === "render-preview") renderPreview();
+    if (act === "yt-publish") {
+      publishYouTube().catch((err) => setStatus("", err.message));
+    }
   });
   $("#composer").addEventListener("submit", (e) => {
     e.preventDefault();

@@ -56,6 +56,19 @@
       </main>
 
       <aside class="panel rail">
+        <div class="section-title">YouTube connection</div>
+        <div class="card" id="ytCard">
+          <div id="ytStatus" class="active-model">Not connected</div>
+          <label>YouTube Data API key (search)</label>
+          <input id="ytApiKey" type="password" placeholder="AIza… optional" />
+          <label>OAuth Client ID (upload)</label>
+          <input id="ytClientId" placeholder="….apps.googleusercontent.com" />
+          <p class="hint">Google Cloud → YouTube Data API v3. Redirect: this exact page URL.</p>
+          <div class="row">
+            <button id="ytConnect" class="btn-red" type="button">Connect YouTube</button>
+            <button id="ytDisconnect" type="button">Disconnect</button>
+          </div>
+        </div>
         <div class="section-title">Channel</div>
         <div id="channelCard" class="card"></div>
         <div class="section-title">Selected video</div>
@@ -87,6 +100,8 @@
     </div>
     <script src="./engine.js"></script>
     <script src="./models.js"></script>
+    <script src="./youtube.js"></script>
+    <script src="./media.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
