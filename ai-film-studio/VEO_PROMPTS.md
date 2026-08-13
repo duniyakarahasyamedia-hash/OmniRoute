@@ -47,27 +47,48 @@ consistent rakhe.
 3. Scene 2, 3, 4, 5 bhi same tarah banao (har ek ~8 sec)
 4. Saari clips ko naam do: `scene_01.mp4`, `scene_02.mp4` ... `scene_05.mp4`
 
-## Phir mere pipeline mein daal do (auto film ban jayegi)
+## Phir mere pipeline mein daal do (auto film ban jayegi — bina API key ke!)
 
 ```bash
 cd ai-film-studio
 
-# 1) ek idea se story + Hindi voiceover + subtitles (FREE, Veo ke bina):
-./run.sh --idea "एक अकेला लड़का रेगिस्तान में एक पुराना दरवाज़ा खोजता है" \
-         --engine veo --skip-video
+# 0) ek baar setup (venv + deps):
+python3 setup.py
 
-# 2) is command se ek folder banega jaise storage/film-XXXXXXXX/
-#    us folder ke shots/ subfolder mein apni 5 Veo clips daal do
-#    (scene_01.mp4 ... scene_05.mp4)
+# 1) ready-made story use karo (ye upar ke 5 prompts se match karti hai):
+mkdir -p storage/desert-door/shots
+cp examples/desert_door_story.json storage/desert-door/story.json
 
-# 3) ab clips + voiceover + subtitles ko jodkar final film banao:
-./run.sh --idea "एक अकेला लड़का रेगिस्तान में एक पुराना दरवाज़ा खोजता है" \
-         --engine veo --skip-video
+# 2) Gemini app se bani apni 5 Veo clips ko yahan daalo:
+#      storage/desert-door/shots/scene_01.mp4
+#      storage/desert-door/shots/scene_02.mp4
+#      ... scene_05.mp4
+
+# 3) ab film assemble karo (Hindi voiceover + subtitles + music + final.mp4):
+.venv/bin/python scripts/veo_film_pipeline.py \
+    --out-dir storage/desert-door --skip-video
 ```
 
-> Main pipeline `shots/` folder mein maujood clips use karta hai, unhe narration ke
-> hisaab se trim karta hai, Hindi subtitles + voiceover + music add karta hai aur
-> `final.mp4` banata hai. Bas.
+> **Koi Gemini API key nahi chahiye** — kyunki story.json aur clips pehle se maujood
+> hain. Pipeline sirf edge-tts (free Hindi voiceover) + ffmpeg (assembly) use karti hai.
+> Output: `storage/desert-door/final.mp4` + `subtitles.srt`.
+
+### Apni koi bhi kahani use karni ho (bina JSON likhe):
+
+```bash
+# script.txt mein ek line = ek scene ki Hindi narration likho:
+printf "पहला दृश्य\nदूसरा दृश्य\nतीसरा दृश्य\n" > script.txt
+
+# (optional) prompts.txt mein ek line = ek scene ka Veo prompt
+
+# story.json banao:
+.venv/bin/python make_story.py --script script.txt --prompts prompts.txt \
+    --title "मेरी फिल्म" --out storage/myfilm/story.json
+
+# clips daalo: storage/myfilm/shots/scene_01.mp4 ...
+# phir assemble:
+.venv/bin/python scripts/veo_film_pipeline.py --out-dir storage/myfilm --skip-video
+```
 
 ## 💡 Veo pro tips (behtar clips ke liye)
 

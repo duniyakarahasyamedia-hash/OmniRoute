@@ -450,46 +450,52 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out-dir", default="", help="output dir (default: storage/film-<id>)")
     args = p.parse_args(argv)
 
-    key = _api_key(args)
-    if not key:
-        print("ERROR: Gemini API key missing. Set GEMINI_API_KEY or --api-key, "
-              "or put gemini_api_key in ai-film-studio/config.toml")
-        return 2
-
-    from google import genai
-
-    client = genai.Client(api_key=key)
-
     idea = args.idea.strip()
     if not idea and args.story_file:
         idea = Path(args.story_file).read_text(encoding="utf-8").strip()
-    if not idea:
-        print("ERROR: provide --idea or --story-file")
-        return 2
 
     out_dir = Path(args.out_dir) if args.out_dir else (
         ROOT / "storage" / f"film-{uuid.uuid4().hex[:8]}"
     )
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ---- story: reuse existing story.json so re-runs keep the same narration ----
+    # ---- figure out what we actually need (Gemini key only when generating) ----
     story_path = out_dir / "story.json"
-    if story_path.exists() and not args.regenerate:
-        shotlist = json.loads(story_path.read_text(encoding="utf-8"))
-        print(f"[1/4] Reusing existing story.json ({len(shotlist.get('scenes', []))} scenes)")
-    else:
+    shots_dir = out_dir / "shots"
+    existing_clips = sorted(shots_dir.glob("scene_*.mp4"))
+
+    need_story = (not story_path.exists()) or args.regenerate
+    need_clips = (not existing_clips) and (not args.skip_video)
+
+    client = None
+    if need_story or need_clips:
+        if not idea:
+            print("ERROR: provide --idea or --story-file (needed to generate story/clips)")
+            return 2
+        key = _api_key(args)
+        if not key:
+            print("ERROR: Gemini API key missing. Set GEMINI_API_KEY or --api-key, "
+                  "or put gemini_api_key in ai-film-studio/config.toml")
+            return 2
+        from google import genai
+
+        client = genai.Client(api_key=key)
+
+    # ---- story: reuse existing story.json so re-runs keep the same narration ----
+    if need_story:
         print(f"[1/4] Building shot-list ({args.num_scenes} scenes) via {args.gemini_model} ...")
         shotlist = build_shotlist(idea, args.style, args.num_scenes, args.gemini_model, client)
         story_path.write_text(
             json.dumps(shotlist, ensure_ascii=False, indent=2), encoding="utf-8"
         )
+    else:
+        shotlist = json.loads(story_path.read_text(encoding="utf-8"))
+        print(f"[1/4] Reusing existing story.json ({len(shotlist.get('scenes', []))} scenes)")
     print(f"      title: {shotlist.get('title')!r}")
 
     scenes = shotlist["scenes"]
-    shots_dir = out_dir / "shots"
 
     # ---- clips: reuse any scene_*.mp4 already in shots/ (e.g. made in Gemini app) ----
-    existing_clips = sorted(shots_dir.glob("scene_*.mp4"))
     clip_paths: list[Path] = []
     if existing_clips:
         clip_paths = existing_clips

@@ -1,0 +1,42 @@
+{
+  "title": "रेगिस्तान का दरवाज़ा",
+  "logline": "एक अकेला लड़का रेगिस्तान में एक प्राचीन दरवाज़ा खोजता है, जो उसे एक नई दुनिया तक ले जाता है।",
+  "style": "dark fantasy, cinematic, teal and amber grading, 35mm anamorphic, film grain",
+  "scenes": [
+    {
+      "scene": 1,
+      "shot": "WIDE ESTABLISHING",
+      "veo_prompt": "Wide drone shot at night: a vast desert under a starry sky. ARJUN, a 14-year-old Indian boy in a beige shawl holding a flickering old oil lantern, walks slowly across golden sand dunes toward a massive ancient stone door half-buried in sand. Wind blows sand across his path, lantern flame flickers, camera slowly pushes in. Cinematic, dark fantasy, teal and amber grading, 35mm anamorphic, film grain.",
+      "narration_hi": "रेगिस्तान की सुनसान रात में, एक अकेला लड़का एक पुराना दरवाज़ा खोजता है।"
+    },
+    {
+      "scene": 2,
+      "shot": "CLOSE-UP",
+      "veo_prompt": "Close-up: ARJUN's hands brush sand off the ancient carved stone door, mysterious glowing runes begin to light up under his fingers. Dust particles drift in the lantern light. Camera slowly orbits to a side angle. Cinematic, dark fantasy, teal and amber grading, 35mm anamorphic, film grain.",
+      "narration_hi": "सालों से यह दरवाज़ा यहीं छिपा था, रेत के नीचे, सबकी नज़रों से दूर।"
+    },
+    {
+      "scene": 3,
+      "shot": "WIDE — DOOR OPENS",
+      "veo_prompt": "The massive ancient stone door slowly opens by itself, blinding golden light spills through the widening crack. ARJUN raises his arm to shield his eyes, his shawl and hair blowing backward in the rush of wind and light. Cinematic, dark fantasy, teal and amber grading, 35mm anamorphic, film grain, dramatic lens flare.",
+      "narration_hi": "जैसे ही उसने दरवाज़ा खोला, एक अनजानी रोशनी ने सब कुछ भर दिया।"
+    },
+    {
+      "scene": 4,
+      "shot": "EXTREME CLOSE-UP",
+      "veo_prompt": "Extreme close-up of ARJUN's face lit by warm golden light, eyes wide with awe, golden light reflecting in his dark eyes, hair strands lit from behind, slow dolly-in. Cinematic, dark fantasy, teal and amber grading, 35mm anamorphic, volumetric light, film grain.",
+      "narration_hi": "उसकी साँसें रुक गईं — सामने कुछ ऐसा था, जो उसने कभी सपने में भी नहीं देखा था।"
+    },
+    {
+      "scene": 5,
+      "shot": "TRACKING — REVEAL",
+      "veo_prompt": "ARJUN steps through the glowing door from the desert into a breathtaking hidden world: floating islands with waterfalls, warm sunrise light, lush greenery and mist. The camera follows behind him then rises to reveal the scale. Cinematic, dark fantasy, teal and amber grading, 35mm anamorphic, volumetric light, film grain.",
+      "narration_hi": "यह थी एक नई दुनिया की शुरुआत। बस एक आईडिया, और पूरी फिल्म तैयार।"
+    }
+  ],
+  "metadata": {
+    "title": "रेगिस्तान का दरवाज़ा | एक AI लघु फिल्म",
+    "description": "एक अकेला लड़का रेगिस्तान में एक प्राचीन दरवाज़ा खोजता है, जो उसे एक नई दुनिया तक ले जाता है। AI से बनी हिंदी लघु फिल्म।",
+    "tags": ["shortfilm", "ai", "hindi", "fantasy", "cinematic"]
+  }
+}
