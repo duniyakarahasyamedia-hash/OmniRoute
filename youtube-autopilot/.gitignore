@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+runs/
+client_secret.json
+token.json
+.venv/
+__pycache__/
+*.pyc
+assets/staging/*
+!assets/staging/demo/
+.DS_Store

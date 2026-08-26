@@ -1,0 +1,92 @@
+# ============================================================
+#  YouTube Autopilot — Channel Configuration
+#  (Sab kuch yahan se control hota hai)
+# ============================================================
+
+channel:
+  name: "MAKE JOKE HORROR"        # Aapke channel ka naam
+  handle: "@makejokehorror"       # Aapke channel ka handle
+  language: "hi"                  # hi = Hindi narration
+  category_id: "22"               # 22 = Entertainment (YouTube category)
+  default_privacy: "private"      # private = upload hone ke baad aap review karke public karo
+                                  # (ya 'public' rakho to seedha public ho jayegi)
+  made_for_kids: false
+
+# ---------- Story Engine (AI script writer) ----------
+story:
+  provider: "openai"              # openai | omniroute | file
+                                  #  - openai   : OpenAI API (gpt-4o-mini etc.)
+                                  #  - omniroute: OmniRoute gateway (is repo ka API)
+                                  #  - file     : pehle se likhi story JSON se (demo/testing)
+  model: "gpt-4o-mini"
+  temperature: 0.9
+  series_prefix: "गुल्ली बुल्ली और"     # Har video ke title me aayega
+  min_scenes: 8                    # Full video ke liye scenes
+  max_scenes: 12
+  target_full_minutes: 10          # Full video target length
+  characters:                      # Apne original characters (MJH style)
+    - name: "गुल्ली"
+      desc: "8 saal ki bachhi, do pigtails, orange frock, bahadur par thodi dar ki"
+    - name: "बुल्ली"
+      desc: "9 saal ka ladka, blue t-shirt aur brown shorts, hamesha gulli ko bachata hai"
+
+# ---------- Image Generation (horror scenes) ----------
+images:
+  provider: "openai"              # openai | replicate | sandbox
+                                  #  - openai  : gpt-image-1 / dall-e-3 (best quality)
+                                  #  - replicate: flux/sdxl models
+                                  #  - sandbox : manually staged images (demo mode)
+  model: "gpt-image-1"            # ya "dall-e-3"
+  size: "1536x1024"
+  style_prefix: >-
+    3D animated cartoon style like a kids animated movie, cute Indian kid characters,
+    horror atmosphere, cinematic dramatic lighting, dark night, spooky, highly detailed,
+    16:9 wide composition, subject centered, vibrant colors
+
+# ---------- Voiceover (Hindi narration) ----------
+voice:
+  provider: "elevenlabs"          # elevenlabs | openai | edge | sandbox
+                                  #  - elevenlabs: BEST Hindi horror voice (premium)
+                                  #  - openai    : OpenAI TTS (acchi quality)
+                                  #  - edge      : Microsoft edge-tts (FREE, decent)
+                                  #  - sandbox   : staged mp3 (demo mode)
+  model: "eleven_multilingual_v2"
+  voice_id: ""                    # ElevenLabs voice id (e.g. "21m00Tcm4TlvDq8ikWAM")
+  voice_name: "hi-IN-MadhurNeural" # edge provider ke liye (Madhur = male dramatic)
+  speed: 1.0
+
+# ---------- Background music (procedural horror, 100% copyright free) ----------
+music:
+  enabled: true
+  volume: 0.14                    # music kitni loud (0.0 - 1.0)
+  heartbeat: true                 # dil ki dhadkan effect
+  drone: true                     # low creepy drone
+
+# ---------- Video rendering ----------
+video:
+  fps: 25
+  crf: 20                         # lower = better quality (18-23)
+  width: 1920
+  height: 1080                    # Full video (16:9)
+  short_width: 1080
+  short_height: 1920              # YouTube Shorts (9:16)
+  crossfade: 0.4                  # scene transitions
+  gap: 0.35                       # narration ke beech silence
+  preset: "veryfast"
+
+# ---------- Subtitles ----------
+subtitles:
+  enabled: true
+  font: "NotoSansDevanagari-700.ttf"
+  fontsize: 46                    # 1080p ke liye
+  color: "&H0000D7FF&"            # yellow (ASS format)
+
+# ---------- YouTube upload ----------
+upload:
+  client_secret: "client_secret.json"   # Google Cloud se download karein
+  token_env: "YOUTUBE_REFRESH_TOKEN"    # auth ke baad .env me save hota hai
+
+# ---------- Review dashboard ----------
+dashboard:
+  port: 8765
+  token: "change-me"              # Dashboard ka password (change zaroor karein)

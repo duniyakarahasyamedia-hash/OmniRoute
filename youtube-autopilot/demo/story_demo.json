@@ -1,0 +1,58 @@
+{
+  "title": "भुतिया गुड़िया",
+  "series": "गुल्ली बुल्ली और भुतिया गुड़िया",
+  "part": 1,
+  "hook": "रात के बारह बजे गली में गुड़िया की हँसी आई... और वो हर रात करीब आती गई! 😱",
+  "thumbnail_prompt": "Dramatic 3D cartoon close-up: scared 8 year old Indian girl with pigtails in orange frock holding a creepy old red dress doll with glowing eyes, dark haunted house background, moonlight, horror movie poster style, high contrast, cinematic",
+  "outro": "क्या ये आवाज़ किसी गुड़िया की थी, या किसी और की? देखिए अगला भाग!",
+  "scenes": [
+    {
+      "id": 1,
+      "narration_hi": "रात के ठीक बारह बजे, गुल्ली और बुल्ली की गली में एक अजीब सी आवाज़ आई। गुड़िया की तरह हँसने की आवाज़... हा हा हा... और वो आवाज़ हर रात करीब आती जा रही थी।",
+      "image_prompt": "3D animated cartoon style: dark Indian village street at midnight, an 8 year old girl with two pigtails in orange frock and a 9 year old boy in blue t-shirt and brown shorts standing scared in the middle of the empty street, a creepy doll silhouette laughing in a window with yellow glowing eyes, full moon, fog, spooky atmosphere",
+      "action": "zoom_in"
+    },
+    {
+      "id": 2,
+      "narration_hi": "अगली सुबह गुल्ली को बाज़ार में एक बहुत पुरानी गुड़िया मिली। लाल कपड़े वाली, टूटी हुई आँखों वाली गुड़िया। गुल्ली ने उसे उठाया, और बुल्ली ने कहा — इसे मत छुओ, ये गुड़िया अजीब है!",
+      "image_prompt": "3D animated cartoon style: colorful Indian morning market, the little girl in orange frock picking up an old antique doll with torn red dress and cracked porcelain face lying on the ground, the boy in blue shirt pulling her hand warning her, villagers blurred in background, suspicious spooky vibe",
+      "action": "pan_right"
+    },
+    {
+      "id": 3,
+      "narration_hi": "उसी रात, गुड़िया की आँखें चमक उठीं। गुड़िया बोली — गुल्ली... आओ... मेरे साथ खेलो। गुल्ली डर गई, पर उसके पैर ज़मीन से उठ नहीं रहे थे।",
+      "image_prompt": "3D animated cartoon style: dark children bedroom at night, the old red dress doll floating in the air with glowing red eyes talking to the terrified girl sitting on the bed with blanket, moonlight from window, doll's mouth open speaking, creepy horror mood",
+      "action": "zoom_in"
+    },
+    {
+      "id": 4,
+      "narration_hi": "गुड़िया उन्हें एक पुराने घर के पास ले गई। वो घर इतना पुराना था कि उसकी दीवारें खुद रो रही थीं। अंदर से सिर्फ एक आवाज़ आ रही थी — अंदर आओ... अंदर आओ...",
+      "image_prompt": "3D animated cartoon style: huge abandoned haunted mansion at night, cracked walls with water dripping like tears, overgrown vines, broken windows with faint warm light inside, the two kids standing small in front of the giant spooky door, fog rolling, crows on roof, full moon",
+      "action": "pan_left"
+    },
+    {
+      "id": 5,
+      "narration_hi": "अंदर जाते ही दरवाज़ा अपने आप बंद हो गया। दीवारों पर सैकड़ों गुड़ियाएँ लटकी थीं, और सबकी आँखें गुल्ली को घूर रही थीं। बुल्ली चिल्लाया — भागो गुल्ली!",
+      "image_prompt": "3D animated cartoon style: dark dusty hall inside haunted house, hundreds of old porcelain dolls hanging from the ceiling and walls, all dolls heads turning to look at the scared kids in the middle, one broken door slamming shut behind them, candles with blue flames, terrifying atmosphere",
+      "action": "zoom_out"
+    },
+    {
+      "id": 6,
+      "narration_hi": "तभी सबसे बड़ी गुड़िया ने आँखें खोलीं और बोली — मेरी खेल की साथी बनोगी गुल्ली? हमेशा के लिए? गुल्ली की आँखों में आँसू आ गए।",
+      "image_prompt": "3D animated cartoon style: giant queen doll face (4 feet tall) with glowing red eyes and cracked porcelain skin leaning close to the crying little girl, the boy behind her frozen in fear, dark room with hanging dolls in background, single spotlight on the queen doll's face, emotional horror scene",
+      "action": "zoom_in"
+    },
+    {
+      "id": 7,
+      "narration_hi": "तभी गुल्ली को याद आया — दादी ने कहा था, गुड़ियों से डरना नहीं, बल्कि उन्हें हँसाना चाहिए! गुल्ली ज़ोर से हँसी... हा हा हा! पूरा घर काँप उठा!",
+      "image_prompt": "3D animated cartoon style: the little girl laughing loudly with magical golden energy waves coming out of her mouth, the giant queen doll and all hanging dolls cracking and melting, house shaking with debris falling, the boy cheering behind her, dramatic golden light vs dark purple horror, epic moment",
+      "action": "zoom_out"
+    },
+    {
+      "id": 8,
+      "narration_hi": "सारी गुड़ियाएँ पिघलने लगीं... लेकिन तभी सबसे अंदर वाले कमरे से एक और आवाज़ आई — शाबाश गुल्ली, अब तुम मेरी असली बहन बनोगी! क्या ये आवाज़ किसी गुड़िया की थी, या किसी और की? जानने के लिए देखिए अगला भाग!",
+      "image_prompt": "3D animated cartoon style: dark corridor inside haunted house, one glowing red door at the end slightly open with a mysterious tall shadow silhouette behind it, the two kids looking back scared with flashlight, melting dolls around them on the floor, cliffhanger horror ending, cinematic",
+      "action": "zoom_in"
+    }
+  ]
+}
