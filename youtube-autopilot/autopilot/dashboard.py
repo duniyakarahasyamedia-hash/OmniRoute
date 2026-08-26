@@ -48,10 +48,10 @@ PAGE = """<!doctype html>
         <span class="badge">{{ r.mode }}</span>
         <span class="badge">{{ r.created }}</span>
       </div>
-      {% if r.videos.thumbnail %}<img src="/{{ r.id }}/thumb" width="100%">{% endif %}
+      {% if r.videos.thumbnail %}<img src="{{ with_token('/' ~ r.id ~ '/thumb') }}" width="100%">{% endif %}
       {% for k in ('full','short') %}
         {% if r.videos.get(k) %}
-          <video controls preload="metadata" src="/{{ r.id }}/video/{{ k }}"></video>
+          <video controls preload="metadata" src="{{ with_token('/' ~ r.id ~ '/video/' ~ k) }}"></video>
         {% endif %}
       {% endfor %}
       {% if r.meta %}
@@ -97,7 +97,7 @@ def index():
     if err:
         return err
     runs = pipeline.list_runs()
-    return render_template_string(PAGE, runs=runs)
+    return render_template_string(PAGE, runs=runs, with_token=_with_token)
 
 
 @app.route("/api/runs")
@@ -135,22 +135,34 @@ def reject(run_id: str):
     return redirect("/")
 
 
+def _with_token(url: str) -> str:
+    tok = request.args.get("token") or request.headers.get("X-Token") or ""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}token={tok}" if tok else url
+
+
 @app.get("/<run_id>/video/<kind>")
 def video(run_id: str, kind: str):
+    err = _check_auth()
+    if err:
+        return err
     m = pipeline.load_manifest(run_id)
     p = Path(m["videos"].get(kind, ""))
     if not p.exists():
         return jsonify({"error": "not found"}), 404
-    return send_file(p, mimetype="video/mp4")
+    return send_file(p, mimetype="video/mp4", conditional=True)
 
 
 @app.get("/<run_id>/thumb")
 def thumb(run_id: str):
+    err = _check_auth()
+    if err:
+        return err
     m = pipeline.load_manifest(run_id)
     p = Path(m["videos"].get("thumbnail", ""))
     if not p.exists():
         return jsonify({"error": "not found"}), 404
-    return send_file(p, mimetype="image/png")
+    return send_file(p, mimetype="image/png", conditional=True)
 
 
 def main(cfg: dict) -> None:
