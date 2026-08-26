@@ -1,6 +1,10 @@
 """Review dashboard (Flask) — videos dekhna, approve/reject/upload karna.
 
 Chalane ke liye:  python -m autopilot dashboard
+
+Auth: DASHBOARD_TOKEN env set karo to password maanga jayega.
+      Agar set nahi (ya 'change-me') to bina password ke khulta hai
+      (personal review tool — sirf aapke private preview me accessible).
 """
 from __future__ import annotations
 
@@ -32,6 +36,8 @@ PAGE = """<!doctype html>
   .btn{display:inline-block;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:700;text-decoration:none;margin:4px 4px 0 0;color:#fff}
   .ok{background:#2e7d32}.no{background:#c62828}.up{background:#1565c0}.meta{background:#37474f;padding:8px;border-radius:8px;font-size:12px;white-space:pre-wrap;margin-top:8px;max-height:160px;overflow:auto}
   .t{color:#ffd700}
+  .login{max-width:380px;margin:80px auto;background:#1a1a22;border:1px solid #2c2c3a;border-radius:12px;padding:28px;text-align:center}
+  .login input{padding:12px;width:100%;border-radius:8px;border:1px solid #444;background:#111;color:#fff;font-size:16px;margin:12px 0;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -64,8 +70,8 @@ PAGE = """<!doctype html>
       {% endif %}
       <div>
         {% if r.status == 'ready' %}
-          <form method="post" action="/{{ r.id }}/approve" style="display:inline"><button class="btn ok">✅ Approve & Upload</button></form>
-          <form method="post" action="/{{ r.id }}/reject" style="display:inline"><button class="btn no">❌ Reject</button></form>
+          <form method="post" action="{{ with_token('/' ~ r.id ~ '/approve') }}" style="display:inline"><button class="btn ok">✅ Approve & Upload</button></form>
+          <form method="post" action="{{ with_token('/' ~ r.id ~ '/reject') }}" style="display:inline"><button class="btn no">❌ Reject</button></form>
         {% elif r.status == 'approved' %}
           <span>Upload ho raha hai...</span>
         {% elif r.status == 'uploaded' %}
@@ -80,16 +86,64 @@ PAGE = """<!doctype html>
 </div>
 </body></html>"""
 
+LOGIN_PAGE = """<!doctype html>
+<html lang="hi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔒 Dashboard Login</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0e0e12;color:#eee;margin:0}
+  .login{max-width:380px;margin:80px auto;background:#1a1a22;border:1px solid #2c2c3a;border-radius:12px;padding:28px;text-align:center}
+  h2{color:#ffd700;margin-top:0}
+  input{padding:12px;width:100%;border-radius:8px;border:1px solid #444;background:#111;color:#fff;font-size:16px;margin:12px 0;box-sizing:border-box}
+  button{background:#1565c0;color:#fff;border:0;padding:12px 24px;border-radius:8px;font-size:16px;cursor:pointer;font-weight:700}
+</style></head>
+<body>
+<form class="login" method="post" action="/login">
+  <h2>🔒 Dashboard Password</h2>
+  <p>Is dashboard ka password daalein:</p>
+  <input type="password" name="password" placeholder="Password..." required autofocus>
+  <button type="submit">Login</button>
+</form>
+</body></html>"""
+
+
+def _token() -> str:
+    return os.environ.get("DASHBOARD_TOKEN") or ""
+
+
+def _auth_enabled() -> bool:
+    t = _token()
+    return bool(t) and t != "change-me"
+
 
 def _auth_ok() -> bool:
-    tok = os.environ.get("DASHBOARD_TOKEN") or "change-me"
+    if not _auth_enabled():
+        return True
+    tok = _token()
     return request.args.get("token") == tok or request.headers.get("X-Token") == tok
 
 
 def _check_auth():
-    if not _auth_ok():
-        return jsonify({"error": "unauthorized — dashboard start karte waqt DASHBOARD_TOKEN set karein"}), 401
-    return None
+    """Returns response to send if auth fails (login form), else None."""
+    if _auth_ok():
+        return None
+    if request.path == "/login":
+        return None
+    return render_template_string(LOGIN_PAGE), 401
+
+
+@app.post("/login")
+def login():
+    pw = request.form.get("password", "")
+    if pw == _token():
+        return redirect(f"/?token={pw}")
+    return render_template_string(LOGIN_PAGE + "<p style='color:#ff6b6b;text-align:center'>Galat password! Try again.</p>"), 401
+
+
+def _with_token(url: str) -> str:
+    tok = request.args.get("token") or request.headers.get("X-Token") or ""
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}token={tok}" if tok else url
 
 
 @app.route("/")
@@ -136,12 +190,6 @@ def reject(run_id: str):
     return redirect("/")
 
 
-def _with_token(url: str) -> str:
-    tok = request.args.get("token") or request.headers.get("X-Token") or ""
-    sep = "&" if "?" in url else "?"
-    return f"{url}{sep}token={tok}" if tok else url
-
-
 @app.get("/<run_id>/download/<kind>")
 def download(run_id: str, kind: str):
     err = _check_auth()
@@ -182,5 +230,8 @@ def thumb(run_id: str):
 
 def main(cfg: dict) -> None:
     port = int(cfg.get("dashboard", {}).get("port", 8765))
-    print(f"🎬 Dashboard: http://localhost:{port}/?token={os.environ.get('DASHBOARD_TOKEN', 'change-me')}")
+    if _auth_enabled():
+        print(f"🎬 Dashboard: http://localhost:{port}  (password protected)")
+    else:
+        print(f"🎬 Dashboard: http://localhost:{port}  (no password — DASHBOARD_TOKEN set karke lock kar sakte ho)")
     app.run(host="0.0.0.0", port=port, debug=False)
