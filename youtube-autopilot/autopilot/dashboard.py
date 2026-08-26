@@ -52,6 +52,7 @@ PAGE = """<!doctype html>
       {% for k in ('full','short') %}
         {% if r.videos.get(k) %}
           <video controls preload="metadata" src="{{ with_token('/' ~ r.id ~ '/video/' ~ k) }}"></video>
+          <a class="btn up" href="{{ with_token('/' ~ r.id ~ '/download/' ~ k) }}">⬇️ Download {{ k }}</a>
         {% endif %}
       {% endfor %}
       {% if r.meta %}
@@ -139,6 +140,20 @@ def _with_token(url: str) -> str:
     tok = request.args.get("token") or request.headers.get("X-Token") or ""
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}token={tok}" if tok else url
+
+
+@app.get("/<run_id>/download/<kind>")
+def download(run_id: str, kind: str):
+    err = _check_auth()
+    if err:
+        return err
+    m = pipeline.load_manifest(run_id)
+    p = Path(m["videos"].get(kind, ""))
+    if not p.exists():
+        return jsonify({"error": "not found"}), 404
+    name = f"{run_id}_{kind}.mp4"
+    return send_file(p, mimetype="video/mp4", as_attachment=True, download_name=name,
+                     conditional=True)
 
 
 @app.get("/<run_id>/video/<kind>")
